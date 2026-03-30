@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""Generate budget_2026.xlsx — replicates the budget_itemized.xlsx structure.
+"""Generate budget_2026.xlsx matching the budget_2026new.xlsx layout.
 
-Each expense category gets its own sheet (Date/Description/Amount, 300 rows).
-Summary sheet shows Budget vs Spent per category with live formulas.
-VBA Setup sheet includes auto-date macro instructions.
+Structure:
+  - Summary: Annual view — months as rows, categories as columns
+  - Jan 2026 … Dec 2026: all 7 categories side-by-side (21 cols), 50 data rows
+  - VBA Setup: auto-date macro instructions
 """
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Alignment
 
-# ── Categories (matches expense_logger.html) ──
+MONTHS = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
+
 CATEGORIES = [
     ("🍽️", "Eating Out"),
     ("🍻", "Drinking"),
@@ -20,238 +25,279 @@ CATEGORIES = [
     ("🍜", "Travel - Eat & Drink"),
 ]
 
-# ── Color palette (dark theme) ──
+# Per-category accent colors for the date column (matches budget_2026new.xlsx exactly)
+CAT_COLORS = ["7C6AF7", "56CFB2", "F7846A", "4488FF", "F7C56A", "CF56CF", "6AB8F7"]
+
+# Per-category colors used in the Summary totals row
+ANNUAL_COLORS = ["7C6AF7", "56CFB2", "F7846A", "4488FF", "F7C56A", "CF56CF", "6AB8F7"]
+
+# ── Fills ──
 BG         = PatternFill("solid", fgColor="1E1E2E")
 ROW_EVEN   = PatternFill("solid", fgColor="252535")
 ROW_ODD    = PatternFill("solid", fgColor="1E1E2C")
 HEADER_BG  = PatternFill("solid", fgColor="2A2A3E")
 
-TITLE_FONT   = lambda color: Font(name="Calibri", color=color, size=16, bold=True)
-SUBTITLE     = Font(name="Calibri", color="7070A0", size=9)
-HDR_FONT     = Font(name="Calibri", color="FFFFFF", size=10, bold=True)
-CAT_FONT     = Font(name="Calibri", color="B0B0C8", size=10)
-BUDGET_FONT  = Font(name="Calibri", color="4488FF", size=10, bold=True)
-SPENT_FONT   = Font(name="Calibri", color="56CFB2", size=10)
-REMAIN_FONT  = Font(name="Calibri", color="F7846A", size=10)
-TOTAL_FONT   = Font(name="Calibri", color="7C6AF7", size=12, bold=True)
-TOTAL_SPENT  = Font(name="Calibri", color="56CFB2", size=12, bold=True)
-TOTAL_REMAIN = Font(name="Calibri", color="F7846A", size=12, bold=True)
-DATE_FONT    = Font(name="Calibri", color="56CFB2", size=10)
-DESC_FONT    = Font(name="Calibri", color="B0B0C8", size=10)
-AMT_FONT     = Font(name="Calibri", color="4488FF", size=10)
-NOTE_FONT    = Font(name="Calibri", color="56CF72", size=10, bold=True)
+# ── Shared fonts ──
+DESC_FONT  = Font(name="Calibri", color="B0B0C8", size=10)
+AMT_FONT   = Font(name="Calibri", color="4488FF", size=10)
+HDR_FONT   = Font(name="Calibri", color="7070A0", size=8)
+CAT_HDR    = Font(name="Calibri", color="FFFFFF", size=9,  bold=True)
+SUBH_WHITE = Font(name="Calibri", color="FFFFFF", size=10, bold=True)
 
-MONEY_FMT = '$#,##0.00;($#,##0.00);"-"'
-DATE_FMT  = 'MMM DD, YYYY'
+MONEY_FMT  = '$#,##0.00;($#,##0.00);"-"'
+DATE_FMT   = "MMM DD"
 
-DATA_ROWS = 300  # rows 4..303
+
+def f(color, size=10, bold=False):
+    return Font(name="Calibri", color=color, size=size, bold=bold)
 
 
 def fill_bg(ws, max_row, max_col):
-    """Fill background for the visible area."""
-    for r in range(1, max_row + 2):
-        for c in range(1, max_col + 2):
+    for r in range(1, max_row + 1):
+        for c in range(1, max_col + 1):
             ws.cell(r, c).fill = BG
 
 
-def build_category_sheet(wb, emoji, label):
-    """Create a per-category expense sheet: Date | Description | Amount."""
-    sheet_name = f"{emoji} {label}"
-    ws = wb.create_sheet(title=sheet_name)
-    fill_bg(ws, DATA_ROWS + 5, 4)
+def build_month_sheet(wb, month_abbr):
+    name = f"{month_abbr} 2026"
+    ws = wb.create_sheet(title=name)
+    fill_bg(ws, 60, 22)
 
-    # Title
-    ws["A1"] = sheet_name
-    ws["A1"].font = TITLE_FONT("7C6AF7")
+    # ── Row 1: Title ──
+    ws.merge_cells("A1:U1")
+    ws["A1"].value = f"💰  {name}  —  Expense Log"
+    ws["A1"].font = f("7C6AF7", 16, True)
     ws["A1"].fill = BG
+    ws.row_dimensions[1].height = 34
 
-    # Subtitle
-    ws["A2"] = "✏️  Type a description (col B) or amount (col C) — date auto-fills in col A"
-    ws["A2"].font = SUBTITLE
-    ws["A2"].fill = BG
-
-    # Headers
-    for col, header in enumerate(["Date (auto)", "Description", "Amount ($)"], 1):
-        cell = ws.cell(row=3, column=col, value=header)
-        cell.font = HDR_FONT
+    # ── Row 2: Category headers (merged over 3 cols each) ──
+    ws.row_dimensions[2].height = 28
+    col_letters = ["A", "D", "G", "J", "M", "P", "S"]
+    merge_ranges = ["A2:C2", "D2:F2", "G2:I2", "J2:L2", "M2:O2", "P2:R2", "S2:U2"]
+    for i, (emoji, label) in enumerate(CATEGORIES):
+        ws.merge_cells(merge_ranges[i])
+        start_col = 1 + i * 3
+        cell = ws.cell(row=2, column=start_col)
+        cell.value = f"{emoji} {label}"
+        cell.font = CAT_HDR
         cell.fill = HEADER_BG
+        cell.alignment = Alignment(vertical="center")
+        # Fill the merged cells too
+        for c in range(start_col, start_col + 3):
+            ws.cell(row=2, column=c).fill = HEADER_BG
 
-    # Data rows with alternating stripes
-    for r in range(4, 4 + DATA_ROWS):
-        row_fill = ROW_EVEN if (r % 2 == 0) else ROW_ODD
-        ws.cell(r, 1).fill = row_fill
-        ws.cell(r, 1).font = DATE_FONT
-        ws.cell(r, 1).number_format = DATE_FMT
+    # ── Row 3: Sub-headers (Date / Description / Amount) ──
+    ws.row_dimensions[3].height = 22
+    for i in range(7):
+        base = 1 + i * 3
+        for j, hdr in enumerate(["Date", "Description", "Amount"]):
+            cell = ws.cell(row=3, column=base + j)
+            cell.value = hdr
+            cell.font = HDR_FONT
+            cell.fill = HEADER_BG
 
-        ws.cell(r, 2).fill = row_fill
-        ws.cell(r, 2).font = DESC_FONT
+    # ── Rows 4–53: Data rows (50 rows) ──
+    for r in range(4, 54):
+        row_fill = ROW_EVEN if r % 2 == 0 else ROW_ODD
+        ws.row_dimensions[r].height = 18
+        for i, color in enumerate(CAT_COLORS):
+            base = 1 + i * 3
+            # Date cell
+            dc = ws.cell(r, base)
+            dc.fill = row_fill
+            dc.font = f(color)
+            dc.number_format = DATE_FMT
+            # Description cell
+            wc = ws.cell(r, base + 1)
+            wc.fill = row_fill
+            wc.font = DESC_FONT
+            # Amount cell
+            ac = ws.cell(r, base + 2)
+            ac.fill = row_fill
+            ac.font = AMT_FONT
+            ac.number_format = MONEY_FMT
 
-        ws.cell(r, 3).fill = row_fill
-        ws.cell(r, 3).font = AMT_FONT
-        ws.cell(r, 3).number_format = MONEY_FMT
+    # ── Row 54: Category totals ──
+    total_colors = ["7C6AF7", "56CFB2", "F7846A", "4488FF", "F7C56A", "CF56CF", "6AB8F7"]
+    amt_cols = [3, 6, 9, 12, 15, 18, 21]  # C, F, I, L, O, R, U
+    for i, (color, amt_col) in enumerate(zip(total_colors, amt_cols)):
+        lbl_col = amt_col - 1
+        lbl = ws.cell(54, lbl_col)
+        lbl.value = "TOTAL"
+        lbl.font = f(color, 10, True)
+        lbl.fill = HEADER_BG
 
-    # Total row at bottom
-    total_row = 4 + DATA_ROWS  # row 304
-    ws.cell(total_row, 2).value = "TOTAL"
-    ws.cell(total_row, 2).font = TOTAL_FONT
-    ws.cell(total_row, 2).fill = BG
+        tot = ws.cell(54, amt_col)
+        tot.value = f"=SUM({tot.column_letter}4:{tot.column_letter}53)"
+        tot.font = f(color, 10, True)
+        tot.fill = HEADER_BG
+        tot.number_format = MONEY_FMT
 
-    ws.cell(total_row, 3).value = f"=SUM(C4:C{total_row - 1})"
-    ws.cell(total_row, 3).font = TOTAL_SPENT
-    ws.cell(total_row, 3).fill = BG
-    ws.cell(total_row, 3).number_format = MONEY_FMT
+    # ── Row 55: Month total ──
+    ws.merge_cells("A55:T55")
+    mt_label = ws.cell(55, 1)
+    mt_label.value = "MONTH TOTAL"
+    mt_label.font = f("FFFFFF", 10, True)
+    mt_label.fill = HEADER_BG
+    mt_total = ws.cell(55, 21)   # U55
+    mt_total.value = "=C54+F54+I54+L54+O54+R54+U54"
+    mt_total.font = f("7C6AF7", 10, True)
+    mt_total.fill = HEADER_BG
+    mt_total.number_format = MONEY_FMT
 
-    # Column widths
-    ws.column_dimensions["A"].width = 15
-    ws.column_dimensions["B"].width = 34
-    ws.column_dimensions["C"].width = 14
+    # ── Column widths ──
+    for i in range(7):
+        base_letter = chr(ord('A') + i * 3)
+        desc_letter = chr(ord('A') + i * 3 + 1)
+        amt_letter  = chr(ord('A') + i * 3 + 2)
+        ws.column_dimensions[base_letter].width = 9
+        ws.column_dimensions[desc_letter].width = 18
+        ws.column_dimensions[amt_letter].width  = 10
 
-    return sheet_name
 
-
-def build_summary(wb, sheet_names):
-    """Build the Summary sheet with Budget / Spent / Remaining per category."""
+def build_summary(wb):
     ws = wb.create_sheet(title="Summary")
-    fill_bg(ws, 20, 5)
+    fill_bg(ws, 20, 10)
 
-    # Title
-    ws["A1"] = "💰  Budget Tracker — Summary"
-    ws["A1"].font = Font(name="Calibri", color="56CFB2", size=18, bold=True)
+    # Row 1: Title
+    ws.merge_cells("A1:I1")
+    ws["A1"].value = "💰  Annual Summary"
+    ws["A1"].font = f("56CFB2", 18, True)
     ws["A1"].fill = BG
+    ws.row_dimensions[1].height = 36
 
-    # Subtitle
-    ws["A2"] = "Type your monthly budget limits in the blue cells below. Spent totals update live."
-    ws["A2"].font = SUBTITLE
+    # Row 2: Subtitle
+    ws.merge_cells("A2:I2")
+    ws["A2"].value = "Spending by month and category — totals pull live from each month tab"
+    ws["A2"].font = f("7070A0", 9)
     ws["A2"].fill = BG
+    ws.row_dimensions[2].height = 18
 
-    # Headers
-    for col, header in enumerate(["Category", "Monthly Budget", "Spent", "Remaining"], 1):
-        cell = ws.cell(row=3, column=col, value=header)
-        cell.font = HDR_FONT
+    # Row 3: Column headers
+    ws.row_dimensions[3].height = 30
+    headers = ["Month"] + [f"{e} {l}" for e, l in CATEGORIES] + ["Month Total"]
+    for c, hdr in enumerate(headers, 1):
+        cell = ws.cell(3, c, hdr)
+        cell.font = f("FFFFFF", 10 if c in (1, 9) else 8, True)
         cell.fill = HEADER_BG
 
-    # Category rows
-    for i, ((emoji, label), sname) in enumerate(zip(CATEGORIES, sheet_names)):
-        row = 4 + i
-        row_fill = ROW_EVEN if (row % 2 == 0) else ROW_ODD
+    # Category column mapping: C, F, I, L, O, R, U (row 54 on each month sheet)
+    cat_sum_cols = ["C", "F", "I", "L", "O", "R", "U"]
 
-        # Category name
-        ws.cell(row, 1).value = f"{emoji} {label}"
-        ws.cell(row, 1).font = CAT_FONT
+    # Rows 4–15: Jan–Dec
+    for m_idx, month in enumerate(MONTHS):
+        row = 4 + m_idx
+        ws.row_dimensions[row].height = 22
+        row_fill = ROW_EVEN if row % 2 == 0 else ROW_ODD
+        sheet_name = f"{month} 2026"
+
+        ws.cell(row, 1).value = sheet_name
+        ws.cell(row, 1).font = f("B0B0C8", 10, True)
         ws.cell(row, 1).fill = row_fill
 
-        # Budget (user editable, blue)
-        ws.cell(row, 2).value = 0
-        ws.cell(row, 2).font = BUDGET_FONT
-        ws.cell(row, 2).fill = row_fill
-        ws.cell(row, 2).number_format = MONEY_FMT
+        for i, (col_letter, color) in enumerate(zip(cat_sum_cols, CAT_COLORS)):
+            cell = ws.cell(row, 2 + i)
+            cell.value = f"='{sheet_name}'!{col_letter}54"
+            cell.font = f(color, 10)
+            cell.fill = row_fill
+            cell.number_format = MONEY_FMT
 
-        # Spent (pulls SUM from category sheet row 304)
-        ws.cell(row, 3).value = f"='{sname}'!C304"
-        ws.cell(row, 3).font = SPENT_FONT
-        ws.cell(row, 3).fill = row_fill
-        ws.cell(row, 3).number_format = MONEY_FMT
+        # Month total (U55)
+        mt = ws.cell(row, 9)
+        mt.value = f"='{sheet_name}'!U55"
+        mt.font = f("7C6AF7", 10, True)
+        mt.fill = row_fill
+        mt.number_format = MONEY_FMT
 
-        # Remaining
-        ws.cell(row, 4).value = f'=IF(B{row}=0,"-",B{row}-C{row})'
-        ws.cell(row, 4).font = REMAIN_FONT
-        ws.cell(row, 4).fill = row_fill
-        ws.cell(row, 4).number_format = MONEY_FMT
+    # Row 16: Annual totals
+    ws.row_dimensions[16].height = 28
+    ws.cell(16, 1).value = "ANNUAL"
+    ws.cell(16, 1).font = f("7C6AF7", 12, True)
+    ws.cell(16, 1).fill = HEADER_BG
 
-    # Total row
-    total_row = 4 + len(CATEGORIES)  # row 11
-    ws.cell(total_row, 1).value = "TOTAL"
-    ws.cell(total_row, 1).font = TOTAL_FONT
-    ws.cell(total_row, 1).fill = HEADER_BG
-
-    ws.cell(total_row, 2).value = f"=SUM(B4:B{total_row - 1})"
-    ws.cell(total_row, 2).font = TOTAL_FONT
-    ws.cell(total_row, 2).fill = HEADER_BG
-    ws.cell(total_row, 2).number_format = MONEY_FMT
-
-    ws.cell(total_row, 3).value = f"=SUM(C4:C{total_row - 1})"
-    ws.cell(total_row, 3).font = TOTAL_SPENT
-    ws.cell(total_row, 3).fill = HEADER_BG
-    ws.cell(total_row, 3).number_format = MONEY_FMT
-
-    ws.cell(total_row, 4).value = f'=IF(B{total_row}=0,"-",B{total_row}-C{total_row})'
-    ws.cell(total_row, 4).font = TOTAL_REMAIN
-    ws.cell(total_row, 4).fill = HEADER_BG
-    ws.cell(total_row, 4).number_format = MONEY_FMT
-
-    # Note about VBA
-    ws.cell(total_row + 2, 1).value = "⚡  See the 'VBA Setup' tab to enable auto-date (takes 1 minute)"
-    ws.cell(total_row + 2, 1).font = NOTE_FONT
-    ws.cell(total_row + 2, 1).fill = BG
+    annual_colors = ["7C6AF7", "56CFB2", "F7846A", "4488FF", "F7C56A", "CF56CF", "6AB8F7", "7C6AF7"]
+    annual_sizes  = [11, 11, 11, 11, 11, 11, 11, 12]
+    for c in range(2, 10):
+        col_letter = chr(ord('A') + c - 1)
+        cell = ws.cell(16, c)
+        cell.value = f"=SUM({col_letter}4:{col_letter}15)"
+        cell.font = f(annual_colors[c - 2], annual_sizes[c - 2], True)
+        cell.fill = HEADER_BG
+        cell.number_format = MONEY_FMT
 
     # Column widths
-    ws.column_dimensions["A"].width = 30
-    ws.column_dimensions["B"].width = 16
-    ws.column_dimensions["C"].width = 14
-    ws.column_dimensions["D"].width = 14
+    ws.column_dimensions["A"].width = 12
+    for col in "BCDEFGH":
+        ws.column_dimensions[col].width = 16
+    ws.column_dimensions["I"].width = 14
 
 
 def build_vba_setup(wb):
-    """Create the VBA Setup instructions sheet."""
     ws = wb.create_sheet(title="VBA Setup")
-    fill_bg(ws, 50, 3)
+    fill_bg(ws, 60, 3)
 
     lines = [
-        (1, "⚡  Enable Auto-Date (one-time setup)", Font(name="Calibri", color="56CFB2", size=16, bold=True)),
-        (3, "HOW TO ENABLE AUTO-DATE IN EXCEL (Windows)", Font(name="Calibri", color="7C6AF7", size=12, bold=True)),
-        (5, "Step 1 → Press  Alt + F11  to open the Visual Basic Editor", Font(name="Calibri", color="B0B0C8", size=10)),
-        (6, "Step 2 → In the left panel, double-click 'ThisWorkbook'", Font(name="Calibri", color="B0B0C8", size=10)),
-        (7, "Step 3 → Copy ALL the code below and paste it into the editor", Font(name="Calibri", color="B0B0C8", size=10)),
-        (8, "Step 4 → Press  Ctrl + S  (save as .xlsm if prompted)", Font(name="Calibri", color="B0B0C8", size=10)),
-        (9, "Step 5 → Close the VBA editor. Done! ✅", Font(name="Calibri", color="B0B0C8", size=10)),
-        (11, "HOW TO ENABLE AUTO-DATE IN EXCEL (Mac)", Font(name="Calibri", color="7C6AF7", size=12, bold=True)),
-        (13, "Step 1 → Go to Tools > Macros > Edit Macros", Font(name="Calibri", color="B0B0C8", size=10)),
-        (14, "Step 2 → Double-click 'ThisWorkbook' in the left panel", Font(name="Calibri", color="B0B0C8", size=10)),
-        (15, "Step 3 → Copy ALL the code below and paste it", Font(name="Calibri", color="B0B0C8", size=10)),
-        (16, "Step 4 → Save. Done! ✅", Font(name="Calibri", color="B0B0C8", size=10)),
-        (18, "NOTE: When opening the file, click 'Enable Macros' if prompted.", Font(name="Calibri", color="F7846A", size=10, bold=True)),
-        (20, "━━━  COPY THE CODE BELOW  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", Font(name="Calibri", color="56CFB2", size=10)),
+        (1,  "⚡  Enable Auto-Date (one-time setup)",          f("56CFB2", 16, True)),
+        (3,  "WINDOWS",                                        f("7C6AF7", 12, True)),
+        (4,  "Step 1 → Press  Alt + F11  to open the Visual Basic Editor", f("B0B0C8", 10)),
+        (5,  "Step 2 → In the left panel, double-click 'ThisWorkbook'",    f("B0B0C8", 10)),
+        (6,  "Step 3 → Copy ALL the code below and paste it",              f("B0B0C8", 10)),
+        (7,  "Step 4 → Ctrl + S  (save as .xlsm if prompted) → close VBA editor ✅", f("B0B0C8", 10)),
+        (9,  "MAC",                                            f("7C6AF7", 12, True)),
+        (10, "Step 1 → Tools > Macros > Edit Macros",         f("B0B0C8", 10)),
+        (11, "Step 2 → Double-click 'ThisWorkbook' in the left panel", f("B0B0C8", 10)),
+        (12, "Step 3 → Copy ALL the code below, paste, save ✅",       f("B0B0C8", 10)),
+        (14, "⚠️  Click 'Enable Macros' when opening the file.",        f("F7846A", 10, True)),
+        (16, "━━━  PASTE THIS CODE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", f("56CFB2", 10)),
     ]
-
     for row, text, font in lines:
         ws.cell(row, 1).value = text
         ws.cell(row, 1).font = font
         ws.cell(row, 1).fill = BG
 
-    # VBA code
-    vba_code = [
-        "' ============================================================",
-        "' PASTE THIS INTO: Tools > Macro > Basic IDE > ThisWorkbook",
-        "' ============================================================",
-        "",
-        "Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)",
-        "    Dim cell As Range",
+    vba = [
+        'Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)',
+        '    Dim cell As Range',
         '    If Sh.Name = "Summary" Or Sh.Name = "VBA Setup" Then Exit Sub',
-        "    If Target.Column < 2 Or Target.Column > 3 Then Exit Sub",
-        "    Application.EnableEvents = False",
-        "    On Error GoTo Cleanup",
-        "    For Each cell In Target",
-        "        If cell.Column >= 2 And cell.Column <= 3 Then",
-        "            Dim dateCell As Range",
-        "            Set dateCell = Sh.Cells(cell.Row, 1)",
+        '    Application.EnableEvents = False',
+        '    On Error GoTo Cleanup',
+        '    For Each cell In Target',
+        "        ' Date col = col 1 (A), Description = col 2 (B), Amount = col 3 (C)",
+        "        ' But we have blocks: each category block is 3 cols wide",
+        "        ' Col pattern: A=date, B=desc, C=amount, D=date, E=desc, F=amount, ...",
+        "        ' Every 3rd col starting at col 1 is a date col",
+        "        ' So date cols: 1,4,7,10,13,16,19",
+        "        ' Desc cols: 2,5,8,11,14,17,20",
+        "        ' Amt cols: 3,6,9,12,15,18,21",
+        '        Dim colInBlock As Integer',
+        '        colInBlock = ((cell.Column - 1) Mod 3) + 1',
+        "        ' colInBlock=1 is date (skip), =2 is desc, =3 is amount",
+        '        If colInBlock = 2 Or colInBlock = 3 Then',
+        "            ' find the date cell for this block",
+        '            Dim dateCol As Integer',
+        '            dateCol = cell.Column - colInBlock + 1',
+        '            Dim dateCell As Range',
+        '            Set dateCell = Sh.Cells(cell.Row, dateCol)',
         '            If cell.Value <> "" And dateCell.Value = "" Then',
-        "                dateCell.Value = Date",
-        '                dateCell.NumberFormat = "MMM DD, YYYY"',
-        "            End If",
-        '            If Sh.Cells(cell.Row, 2).Value = "" And _',
-        '               Sh.Cells(cell.Row, 3).Value = "" Then',
-        "                dateCell.ClearContents",
-        "            End If",
-        "        End If",
-        "    Next cell",
-        "Cleanup:",
-        "    Application.EnableEvents = True",
-        "End Sub",
+        '                dateCell.Value = Date',
+        '                dateCell.NumberFormat = "MMM DD"',
+        '            End If',
+        '            Dim descCell As Range, amtCell As Range',
+        '            Set descCell = Sh.Cells(cell.Row, dateCol + 1)',
+        '            Set amtCell  = Sh.Cells(cell.Row, dateCol + 2)',
+        '            If descCell.Value = "" And amtCell.Value = "" Then',
+        '                dateCell.ClearContents',
+        '            End If',
+        '        End If',
+        '    Next cell',
+        'Cleanup:',
+        '    Application.EnableEvents = True',
+        'End Sub',
     ]
-
     code_font = Font(name="Consolas", color="56CF72", size=10)
-    for i, line in enumerate(vba_code):
-        cell = ws.cell(row=21 + i, column=1, value=line)
+    for i, line in enumerate(vba):
+        cell = ws.cell(17 + i, 1)
+        cell.value = line
         cell.font = code_font
         cell.fill = BG
 
@@ -262,28 +308,21 @@ def main():
     wb = Workbook()
     wb.remove(wb.active)
 
-    # Build category sheets
-    sheet_names = []
-    for emoji, label in CATEGORIES:
-        sname = build_category_sheet(wb, emoji, label)
-        sheet_names.append(sname)
+    # Build Summary first
+    build_summary(wb)
 
-    # Build summary (references category sheets)
-    build_summary(wb, sheet_names)
+    # Build 12 monthly sheets
+    for month in MONTHS:
+        build_month_sheet(wb, month)
 
-    # Build VBA setup
+    # Build VBA Setup last
     build_vba_setup(wb)
-
-    # Reorder: Summary first, VBA Setup last
-    summary_idx = wb.sheetnames.index("Summary")
-    wb.move_sheet("Summary", offset=-summary_idx)
 
     out = "budget_2026.xlsx"
     wb.save(out)
     print(f"✓ Created {out}")
     print(f"  Sheets: {', '.join(wb.sheetnames)}")
-    print(f"  Each category has {DATA_ROWS} entry rows with auto-sum")
-    print(f"  Summary links to all category totals with Budget/Spent/Remaining")
+    print(f"  Layout: Annual Summary + 12 monthly sheets (50 rows × 7 categories) + VBA Setup")
 
 
 if __name__ == "__main__":
