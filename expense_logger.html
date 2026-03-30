@@ -19,7 +19,7 @@
     --accent2: #6066f0;
     --accent3: #f060a8;
     --text: #f0f0f5;
-    --muted: #6060780;
+    --muted: #606078;
     --muted2: #50506a;
     --success: #60f0a8;
     --font-display: 'Syne', sans-serif;
@@ -38,7 +38,6 @@
     overflow-x: hidden;
   }
 
-  /* Background texture */
   body::before {
     content: '';
     position: fixed;
@@ -74,9 +73,7 @@
     line-height: 1;
   }
 
-  .header-title span {
-    color: var(--accent);
-  }
+  .header-title span { color: var(--accent); }
 
   .header-date {
     font-family: var(--font-mono);
@@ -129,11 +126,7 @@
     gap: 16px;
   }
 
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
 
   .field-label {
     font-size: 11px;
@@ -162,16 +155,9 @@
 
   .field input:focus,
   .field select:focus,
-  .field textarea:focus {
-    border-color: var(--accent);
-  }
+  .field textarea:focus { border-color: var(--accent); }
 
-  .field textarea {
-    resize: none;
-    height: 72px;
-    font-size: 14px;
-    line-height: 1.5;
-  }
+  .field textarea { resize: none; height: 72px; font-size: 14px; line-height: 1.5; }
 
   .field select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2360607a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -180,10 +166,7 @@
     padding-right: 36px;
   }
 
-  /* Amount field special */
-  .amount-wrapper {
-    position: relative;
-  }
+  .amount-wrapper { position: relative; }
 
   .amount-wrapper .currency {
     position: absolute;
@@ -260,19 +243,6 @@
   .submit-btn:active { transform: scale(0.98); }
   .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .submit-btn.loading::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-    animation: shimmer 1s infinite;
-  }
-
-  @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-
   /* ── TOAST ── */
   .toast {
     position: fixed;
@@ -287,19 +257,17 @@
     font-weight: 700;
     letter-spacing: 0.3px;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 100;
+    z-index: 200;
     white-space: nowrap;
   }
 
   .toast.error { background: var(--accent3); color: white; }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  /* ── LOG VIEW ── */
+  /* ── LOG / HISTORY VIEW ── */
   .log-view { padding: 0 16px; }
 
-  .log-month {
-    margin-bottom: 20px;
-  }
+  .log-month { margin-bottom: 20px; }
 
   .log-month-title {
     font-size: 11px;
@@ -320,7 +288,11 @@
     margin-bottom: 6px;
     border: 1px solid var(--border);
     animation: slideIn 0.2s ease;
+    cursor: pointer;
+    transition: border-color 0.15s;
   }
+
+  .log-entry:active { border-color: var(--accent); }
 
   @keyframes slideIn {
     from { opacity: 0; transform: translateY(-8px); }
@@ -328,7 +300,6 @@
   }
 
   .log-emoji { font-size: 20px; flex-shrink: 0; }
-
   .log-info { flex: 1; min-width: 0; }
 
   .log-desc {
@@ -395,140 +366,287 @@
   .empty-state .big { font-size: 48px; margin-bottom: 12px; }
   .empty-state p { font-size: 14px; line-height: 1.6; }
 
-  /* ── SETUP VIEW ── */
-  .setup-view { padding: 0 16px; }
+  /* ── EDIT BOTTOM SHEET ── */
+  .edit-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 150;
+    display: none;
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
 
-  .setup-card {
+  .edit-overlay.open { display: flex; }
+
+  .edit-sheet {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    border-top: 1px solid var(--border);
+    max-height: 90dvh;
+    overflow-y: auto;
+    animation: sheetUp 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+
+  @keyframes sheetUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .edit-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 0;
+  }
+
+  .edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px 8px;
+  }
+
+  .edit-header-title {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .delete-btn {
+    padding: 6px 14px;
+    background: rgba(240, 96, 168, 0.12);
+    border: 1px solid var(--accent3);
+    color: var(--accent3);
+    border-radius: 100px;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .delete-btn:active { opacity: 0.7; }
+
+  .edit-form {
+    padding: 16px 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .edit-actions {
+    padding: 16px 24px calc(16px + env(safe-area-inset-bottom));
+  }
+
+  /* ── STATS VIEW ── */
+  .stats-view { padding: 0 16px; }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 16px;
+  }
+
+  .month-nav-btn {
+    width: 40px;
+    height: 40px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    border-radius: 50%;
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .month-nav-btn:active { border-color: var(--accent); }
+
+  .month-nav-label {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .stats-card {
     background: var(--surface);
     border-radius: var(--radius);
     border: 1px solid var(--border);
+    margin-bottom: 12px;
     overflow: hidden;
-    margin-bottom: 16px;
   }
 
-  .setup-card-header {
-    padding: 16px 20px;
+  .stats-card-header {
+    padding: 14px 18px;
     background: var(--surface2);
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: var(--accent);
   }
 
-  .setup-card-body { padding: 20px; }
+  .stats-card-body { padding: 16px 18px; }
 
-  .setup-step {
-    display: flex;
-    gap: 14px;
-    margin-bottom: 18px;
-    align-items: flex-start;
-  }
-
-  .setup-step:last-child { margin-bottom: 0; }
-
-  .step-num {
-    width: 26px;
-    height: 26px;
-    background: var(--accent);
-    color: var(--bg);
-    border-radius: 50%;
+  /* Category bar rows */
+  .cat-bar-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 800;
-    flex-shrink: 0;
-    margin-top: 1px;
+    gap: 10px;
+    margin-bottom: 12px;
   }
 
-  .step-text { font-size: 13px; line-height: 1.6; color: var(--text); }
-  .step-text a { color: var(--accent); text-decoration: none; }
-  .step-text code {
-    background: var(--surface2);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--accent2);
-    word-break: break-all;
-  }
+  .cat-bar-row:last-child { margin-bottom: 0; }
 
-  .script-box {
-    background: #0d1117;
-    border-radius: var(--radius-sm);
-    padding: 16px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    line-height: 1.7;
-    color: #a8d8a8;
-    overflow-x: auto;
-    white-space: pre;
-    border: 1px solid var(--border);
-    position: relative;
-  }
+  .cat-bar-emoji { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
 
-  .copy-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--muted2);
-    font-family: var(--font-display);
+  .cat-bar-info { flex: 1; min-width: 0; }
+
+  .cat-bar-label {
     font-size: 11px;
     font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
+    color: var(--muted2);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-  .url-input-wrap { position: relative; }
-  .url-input-wrap input {
+  .cat-bar-track {
+    height: 6px;
     background: var(--surface2);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    padding: 12px 14px;
-    width: 100%;
-    outline: none;
-    transition: border-color 0.15s;
+    border-radius: 3px;
+    overflow: hidden;
   }
-  .url-input-wrap input:focus { border-color: var(--accent); }
 
-  .save-btn {
-    margin-top: 10px;
+  .cat-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .cat-bar-fill.zero { background: var(--border); }
+
+  .cat-bar-amt {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    flex-shrink: 0;
+    width: 64px;
+    text-align: right;
+  }
+
+  .cat-bar-amt.zero { color: var(--muted2); }
+
+  .stats-month-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stats-month-total-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted2);
+  }
+
+  .stats-month-total-amt {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  /* Export button */
+  .export-btn {
     width: 100%;
-    padding: 13px;
-    background: var(--accent2);
-    color: white;
-    border: none;
-    border-radius: var(--radius-sm);
+    padding: 14px;
+    background: transparent;
+    border: 1.5px solid var(--accent2);
+    color: var(--accent2);
+    border-radius: var(--radius);
     font-family: var(--font-display);
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    transition: opacity 0.15s;
+    transition: all 0.15s;
+    margin-bottom: 12px;
+    letter-spacing: 0.3px;
   }
-  .save-btn:active { opacity: 0.8; }
 
-  .connected-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(96, 240, 168, 0.1);
-    border: 1px solid var(--success);
-    color: var(--success);
-    padding: 6px 12px;
-    border-radius: 100px;
-    font-size: 12px;
+  .export-btn:active { opacity: 0.7; }
+
+  /* Annual summary table */
+  .annual-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  .annual-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+  }
+
+  .annual-table th,
+  .annual-table td {
+    padding: 8px 12px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .annual-table th {
+    color: var(--muted2);
+    font-weight: 500;
+    background: var(--surface2);
+    text-align: center;
+    position: sticky;
+    top: 0;
+  }
+
+  .annual-table th:first-child,
+  .annual-table td:first-child {
+    text-align: left;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text);
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    z-index: 2;
+  }
+
+  .annual-table th:first-child { background: var(--surface2); z-index: 3; }
+
+  .annual-table td { color: var(--muted2); }
+  .annual-table td.has-data { color: var(--text); }
+
+  .annual-table tr:last-child td {
+    border-bottom: none;
+    color: var(--accent);
     font-weight: 700;
+  }
+
+  .annual-table tr:last-child td:first-child { color: var(--accent); }
+
+  .annual-table td.total-col {
+    color: var(--text);
+    font-weight: 600;
   }
 
   /* ── BOTTOM NAV ── */
@@ -574,6 +692,41 @@
   .nav-btn.active .nav-icon { filter: drop-shadow(0 0 6px var(--accent)); }
 
   select option { background: #1c1c26; color: #f0f0f5; }
+
+  /* Edit cat grid (smaller) */
+  .edit-cat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .edit-cat-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted2);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .edit-cat-pill .emoji { font-size: 14px; flex-shrink: 0; }
+
+  .edit-cat-pill.selected {
+    border-color: var(--accent);
+    background: rgba(200,240,96,0.1);
+    color: var(--accent);
+  }
 </style>
 </head>
 <body>
@@ -589,7 +742,7 @@
   <div class="tabs">
     <button class="tab active" onclick="showView('log')">Log</button>
     <button class="tab" onclick="showView('history')">History</button>
-    <button class="tab" onclick="showView('setup')">Setup</button>
+    <button class="tab" onclick="showView('stats')">Stats</button>
   </div>
 
   <!-- LOG VIEW -->
@@ -625,7 +778,6 @@
             <option>Discover</option>
             <option>Wells Fargo</option>
             <option>Bilt</option>
-            <option>Bi</option>
             <option>Apple Card</option>
             <option>Cash</option>
           </select>
@@ -654,95 +806,30 @@
     <div class="log-view" id="logView"></div>
   </div>
 
-  <!-- SETUP VIEW -->
-  <div id="view-setup" style="display:none">
-    <div class="setup-view">
+  <!-- STATS VIEW -->
+  <div id="view-stats" style="display:none">
+    <div class="stats-view">
 
-      <div class="setup-card">
-        <div class="setup-card-header">Connect to Google Sheets</div>
-        <div class="setup-card-body">
+      <div class="month-nav">
+        <button class="month-nav-btn" onclick="statsChangeMonth(-1)">‹</button>
+        <span class="month-nav-label" id="statsMonthLabel"></span>
+        <button class="month-nav-btn" onclick="statsChangeMonth(1)">›</button>
+      </div>
 
-          <div class="setup-step">
-            <div class="step-num">1</div>
-            <div class="step-text">
-              Go to <a href="https://sheets.new" target="_blank">sheets.new</a> and create a new spreadsheet. Name it <strong>Budget 2026</strong>.
-            </div>
-          </div>
-
-          <div class="setup-step">
-            <div class="step-num">2</div>
-            <div class="step-text">
-              Click <strong>Extensions → Apps Script</strong>. Delete everything in the editor and paste the script below.
-            </div>
-          </div>
-
-          <div style="position:relative; margin-bottom: 18px;">
-            <div class="script-box" id="scriptBox">function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheetName = data.month || "Expenses";
-    var sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
-      sheet = ss.insertSheet(sheetName);
-      sheet.appendRow([
-        "Date","Category","Description",
-        "Amount","Payment","Location","Notes"
-      ]);
-      sheet.getRange(1,1,1,7).setFontWeight("bold");
-    }
-    sheet.appendRow([
-      data.date, data.category, data.description,
-      data.amount, data.payment, data.location, data.notes
-    ]);
-    return ContentService
-      .createTextOutput(JSON.stringify({status:"ok"}))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({status:"error",message:err.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}</div>
-            <button class="copy-btn" onclick="copyScript()">Copy</button>
-          </div>
-
-          <div class="setup-step">
-            <div class="step-num">3</div>
-            <div class="step-text">
-              Click <strong>Deploy → New deployment</strong>. Set type to <strong>Web app</strong>, set "Who has access" to <strong>Anyone</strong>, click Deploy. Copy the Web App URL it gives you.
-            </div>
-          </div>
-
-          <div class="setup-step">
-            <div class="step-num">4</div>
-            <div class="step-text">Paste your Web App URL below and tap Save.</div>
-          </div>
-
-          <div class="url-input-wrap">
-            <input type="url" id="webhookUrl" placeholder="https://script.google.com/macros/s/..." value="">
-          </div>
-          <button class="save-btn" onclick="saveWebhook()">Save & Connect</button>
-
-          <div id="connectedBadge" style="display:none; margin-top:14px;">
-            <span class="connected-badge">✓ Connected to Google Sheets</span>
-          </div>
-
+      <div class="stats-card" id="catBreakdownCard">
+        <div class="stats-card-header">SPENDING BY CATEGORY</div>
+        <div class="stats-card-body" id="catBreakdown"></div>
+        <div class="stats-month-total">
+          <span class="stats-month-total-label">Month Total</span>
+          <span class="stats-month-total-amt" id="statsMonthTotal">$0.00</span>
         </div>
       </div>
 
-      <div class="setup-card">
-        <div class="setup-card-header">Add to Home Screen</div>
-        <div class="setup-card-body">
-          <div class="setup-step">
-            <div class="step-num">i</div>
-            <div class="step-text"><strong>iPhone:</strong> Tap the Share button in Safari → "Add to Home Screen" → Add. Done — it'll look like an app icon.</div>
-          </div>
-          <div class="setup-step">
-            <div class="step-num">A</div>
-            <div class="step-text"><strong>Android:</strong> Tap the three-dot menu in Chrome → "Add to Home screen".</div>
-          </div>
-        </div>
+      <button class="export-btn" id="exportBtn" onclick="exportCSV()">↓ Export CSV</button>
+
+      <div class="stats-card">
+        <div class="stats-card-header">ANNUAL SUMMARY — 2026</div>
+        <div class="annual-table-wrap" id="annualTable"></div>
       </div>
 
     </div>
@@ -759,64 +846,143 @@
     <span class="nav-icon">📋</span>
     <span class="nav-label">HISTORY</span>
   </button>
-  <button class="nav-btn" id="nav-setup" onclick="showView('setup')">
-    <span class="nav-icon">⚙️</span>
-    <span class="nav-label">SETUP</span>
+  <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">STATS</span>
   </button>
+</div>
+
+<!-- Edit Bottom Sheet -->
+<div class="edit-overlay" id="editOverlay" onclick="handleOverlayClick(event)">
+  <div class="edit-sheet" id="editSheet">
+    <div class="edit-handle"></div>
+    <div class="edit-header">
+      <span class="edit-header-title">Edit Expense</span>
+      <button class="delete-btn" onclick="deleteEntry()">Delete</button>
+    </div>
+    <div class="edit-form">
+
+      <div class="field">
+        <div class="field-label">Category</div>
+        <div class="edit-cat-grid" id="editCatGrid"></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Amount</div>
+        <div class="amount-wrapper">
+          <span class="currency">$</span>
+          <input type="number" id="editAmount" inputmode="decimal" placeholder="0.00" min="0" step="0.01">
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Description</div>
+        <input type="text" id="editDescription" placeholder="What did you spend on?">
+      </div>
+
+      <div class="field">
+        <div class="field-label">Payment Method</div>
+        <select id="editPayment">
+          <option value="">Select card / method</option>
+          <option>Robinhood</option>
+          <option>Chase Sapphire</option>
+          <option>Chase Freedom</option>
+          <option>Discover</option>
+          <option>Wells Fargo</option>
+          <option>Bilt</option>
+          <option>Apple Card</option>
+          <option>Cash</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Location (optional)</div>
+        <input type="text" id="editLocation" placeholder="e.g. Chick-fil-A, Amazon...">
+      </div>
+
+      <div class="field">
+        <div class="field-label">Notes (optional)</div>
+        <textarea id="editNotes" placeholder="Any extra details..."></textarea>
+      </div>
+
+    </div>
+    <div class="edit-actions">
+      <button class="submit-btn" onclick="saveEdit()">SAVE CHANGES</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 const CATEGORIES = [
-  { label: "Eating Out",   emoji: "🍽️" },
-  { label: "Drinking",     emoji: "🍻" },
-  { label: "Shopping (want)", emoji: "🛍️" },
-  { label: "Shopping (need)", emoji: "🛒" },
-  { label: "Groceries",   emoji: "🥦" },
-  { label: "Travel – Flights", emoji: "✈️" },
-  { label: "Travel – Food",  emoji: "🍜" },
+  { label: "Eating Out",        emoji: "🍽️" },
+  { label: "Drinking",          emoji: "🍻" },
+  { label: "Shopping (want)",   emoji: "🛍️" },
+  { label: "Shopping (need)",   emoji: "🛒" },
+  { label: "Groceries",         emoji: "🥦" },
+  { label: "Travel – Flights",  emoji: "✈️" },
+  { label: "Travel – Food",     emoji: "🍜" },
+  { label: "Gastos familiares", emoji: "👨‍👩‍👧" },
 ];
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// ── State ──
 let selectedCat = null;
+let editSelectedCat = null;
+let editingId = null;
+
 let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
-let webhookUrl = localStorage.getItem('webhookUrl') || '';
+// Migrate: add IDs to old entries
+expenses = expenses.map((e, i) => e.id ? e : { ...e, id: `${Date.now()}-${i}` });
+saveExpenses();
+
+// Stats month state: { year, month (0-indexed) }
+const now = new Date();
+let statsYear = now.getFullYear();
+let statsMonth = now.getMonth();
 
 // ── Init ──
 function init() {
-  // date header
-  const now = new Date();
+  const d = new Date();
   document.getElementById('headerDate').innerHTML =
-    now.toLocaleDateString('en-US', {weekday:'long'}) + '<br>' +
-    now.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+    d.toLocaleDateString('en-US', { weekday: 'long' }) + '<br>' +
+    d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  // build category grid
-  const grid = document.getElementById('catGrid');
-  CATEGORIES.forEach((cat, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'cat-pill';
-    btn.innerHTML = `<span class="emoji">${cat.emoji}</span>${cat.label}`;
-    btn.onclick = () => selectCat(i, btn);
-    grid.appendChild(btn);
-  });
-
-  // load webhook
-  if (webhookUrl) {
-    document.getElementById('webhookUrl').value = webhookUrl;
-    document.getElementById('connectedBadge').style.display = 'block';
-  }
-
+  buildCatGrid('catGrid', 'cat-pill', selectCat);
+  buildCatGrid('editCatGrid', 'edit-cat-pill', selectEditCat);
   renderHistory();
+  renderStats();
 }
 
-function selectCat(i, btn) {
+function buildCatGrid(containerId, pillClass, handler) {
+  const grid = document.getElementById(containerId);
+  grid.innerHTML = '';
+  CATEGORIES.forEach((cat, i) => {
+    const btn = document.createElement('button');
+    btn.className = pillClass;
+    btn.dataset.index = i;
+    btn.innerHTML = `<span class="emoji">${cat.emoji}</span>${cat.label}`;
+    btn.onclick = () => handler(i);
+    grid.appendChild(btn);
+  });
+}
+
+function selectCat(i) {
   document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
+  document.querySelectorAll('.cat-pill')[i].classList.add('selected');
   selectedCat = i;
 }
 
+function selectEditCat(i) {
+  document.querySelectorAll('.edit-cat-pill').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.edit-cat-pill')[i].classList.add('selected');
+  editSelectedCat = i;
+}
+
 // ── Submit ──
-async function submitExpense() {
+function submitExpense() {
   const amount = parseFloat(document.getElementById('amount').value);
   const description = document.getElementById('description').value.trim();
   const payment = document.getElementById('payment').value;
@@ -826,10 +992,13 @@ async function submitExpense() {
   if (!description) { showToast('Add a description', true); return; }
   if (!payment) { showToast('Select payment method', true); return; }
 
-  const now = new Date();
+  const d = new Date();
   const entry = {
-    date: now.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}),
-    month: now.toLocaleDateString('en-US', {month:'short', year:'numeric'}),
+    id: Date.now().toString(),
+    date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    month: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+    monthIndex: d.getMonth(),
+    year: d.getFullYear(),
     category: CATEGORIES[selectedCat].label,
     emoji: CATEGORIES[selectedCat].emoji,
     description,
@@ -837,36 +1006,14 @@ async function submitExpense() {
     payment,
     location: document.getElementById('location').value.trim(),
     notes: document.getElementById('notes').value.trim(),
-    ts: now.toISOString(),
+    ts: d.toISOString(),
   };
 
-  // Save locally
   expenses.unshift(entry);
-  localStorage.setItem('expenses', JSON.stringify(expenses));
+  saveExpenses();
 
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  btn.classList.add('loading');
-  btn.textContent = 'Saving...';
+  showToast(`✓ $${amount.toFixed(2)} logged`);
 
-  // Send to Google Sheets
-  if (webhookUrl) {
-    try {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry),
-      });
-      showToast(`✓ $${amount.toFixed(2)} logged to Sheets`);
-    } catch (err) {
-      showToast('Saved locally (Sheets offline)', true);
-    }
-  } else {
-    showToast(`✓ $${amount.toFixed(2)} saved locally`);
-  }
-
-  // Reset form
   document.getElementById('amount').value = '';
   document.getElementById('description').value = '';
   document.getElementById('payment').value = '';
@@ -875,11 +1022,8 @@ async function submitExpense() {
   document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('selected'));
   selectedCat = null;
 
-  btn.disabled = false;
-  btn.classList.remove('loading');
-  btn.textContent = 'LOG EXPENSE →';
-
   renderHistory();
+  renderStats();
 }
 
 // ── History ──
@@ -890,7 +1034,6 @@ function renderHistory() {
     return;
   }
 
-  // Group by month
   const byMonth = {};
   expenses.forEach(e => {
     if (!byMonth[e.month]) byMonth[e.month] = [];
@@ -904,7 +1047,7 @@ function renderHistory() {
     div.className = 'log-month';
     div.innerHTML = `<div class="log-month-title">${month}</div>` +
       items.map(e => `
-        <div class="log-entry">
+        <div class="log-entry" onclick="openEdit('${e.id}')">
           <span class="log-emoji">${e.emoji}</span>
           <div class="log-info">
             <div class="log-desc">${e.description}</div>
@@ -923,35 +1066,247 @@ function renderHistory() {
   });
 }
 
+// ── Edit Sheet ──
+function openEdit(id) {
+  const entry = expenses.find(e => e.id === id);
+  if (!entry) return;
+  editingId = id;
+
+  const catIdx = CATEGORIES.findIndex(c => c.label === entry.category);
+  editSelectedCat = catIdx >= 0 ? catIdx : null;
+
+  document.querySelectorAll('.edit-cat-pill').forEach((b, i) => {
+    b.classList.toggle('selected', i === editSelectedCat);
+  });
+
+  document.getElementById('editAmount').value = entry.amount;
+  document.getElementById('editDescription').value = entry.description;
+  document.getElementById('editPayment').value = entry.payment;
+  document.getElementById('editLocation').value = entry.location || '';
+  document.getElementById('editNotes').value = entry.notes || '';
+
+  document.getElementById('editOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEdit() {
+  document.getElementById('editOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  editingId = null;
+  editSelectedCat = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('editOverlay')) closeEdit();
+}
+
+function saveEdit() {
+  if (!editingId) return;
+  const amount = parseFloat(document.getElementById('editAmount').value);
+  const description = document.getElementById('editDescription').value.trim();
+  const payment = document.getElementById('editPayment').value;
+
+  if (editSelectedCat === null) { showToast('Pick a category', true); return; }
+  if (!amount || amount <= 0) { showToast('Enter an amount', true); return; }
+  if (!description) { showToast('Add a description', true); return; }
+
+  expenses = expenses.map(e => {
+    if (e.id !== editingId) return e;
+    return {
+      ...e,
+      category: CATEGORIES[editSelectedCat].label,
+      emoji: CATEGORIES[editSelectedCat].emoji,
+      amount,
+      description,
+      payment,
+      location: document.getElementById('editLocation').value.trim(),
+      notes: document.getElementById('editNotes').value.trim(),
+    };
+  });
+
+  saveExpenses();
+  closeEdit();
+  renderHistory();
+  renderStats();
+  showToast('✓ Expense updated');
+}
+
+function deleteEntry() {
+  if (!editingId) return;
+  expenses = expenses.filter(e => e.id !== editingId);
+  saveExpenses();
+  closeEdit();
+  renderHistory();
+  renderStats();
+  showToast('Expense deleted');
+}
+
+// ── Stats ──
+function statsChangeMonth(dir) {
+  statsMonth += dir;
+  if (statsMonth > 11) { statsMonth = 0; statsYear++; }
+  if (statsMonth < 0)  { statsMonth = 11; statsYear--; }
+  renderStats();
+}
+
+function renderStats() {
+  const label = `${MONTHS[statsMonth]} ${statsYear}`;
+  document.getElementById('statsMonthLabel').textContent = label;
+  document.getElementById('exportBtn').textContent = `↓ Export ${label} CSV`;
+
+  // Filter expenses for selected month/year
+  const monthExpenses = expenses.filter(e => {
+    // Support both old and new entry formats
+    if (e.monthIndex !== undefined && e.year !== undefined) {
+      return e.monthIndex === statsMonth && e.year === statsYear;
+    }
+    // Fallback: parse from month string e.g. "Mar 2026"
+    const parts = (e.month || '').split(' ');
+    return parts[0] === MONTHS[statsMonth] && parts[1] === String(statsYear);
+  });
+
+  // Totals per category
+  const catTotals = CATEGORIES.map(cat => {
+    const total = monthExpenses
+      .filter(e => e.category === cat.label)
+      .reduce((s, e) => s + e.amount, 0);
+    return { ...cat, total };
+  });
+
+  const monthTotal = catTotals.reduce((s, c) => s + c.total, 0);
+  const maxAmt = Math.max(...catTotals.map(c => c.total), 0.01);
+
+  // Category breakdown bars
+  const breakdown = document.getElementById('catBreakdown');
+  breakdown.innerHTML = catTotals.map(c => `
+    <div class="cat-bar-row">
+      <span class="cat-bar-emoji">${c.emoji}</span>
+      <div class="cat-bar-info">
+        <div class="cat-bar-label">${c.label}</div>
+        <div class="cat-bar-track">
+          <div class="cat-bar-fill ${c.total === 0 ? 'zero' : ''}"
+               style="width:${c.total === 0 ? 2 : (c.total / maxAmt * 100)}%"></div>
+        </div>
+      </div>
+      <span class="cat-bar-amt ${c.total === 0 ? 'zero' : ''}">
+        ${c.total === 0 ? '—' : '$' + c.total.toFixed(2)}
+      </span>
+    </div>
+  `).join('');
+
+  document.getElementById('statsMonthTotal').textContent = `$${monthTotal.toFixed(2)}`;
+
+  renderAnnualTable();
+}
+
+function renderAnnualTable() {
+  const year = statsYear;
+
+  // Build matrix: rows = months, cols = categories
+  const rows = MONTHS.map((mon, mi) => {
+    const monthExp = expenses.filter(e => {
+      if (e.monthIndex !== undefined && e.year !== undefined) {
+        return e.monthIndex === mi && e.year === year;
+      }
+      const parts = (e.month || '').split(' ');
+      return parts[0] === mon && parts[1] === String(year);
+    });
+    const cols = CATEGORIES.map(cat =>
+      monthExp.filter(e => e.category === cat.label).reduce((s, e) => s + e.amount, 0)
+    );
+    const rowTotal = cols.reduce((s, v) => s + v, 0);
+    return { label: `${mon} ${year}`, cols, rowTotal };
+  });
+
+  // Annual totals row
+  const annualCols = CATEGORIES.map((_, ci) =>
+    rows.reduce((s, r) => s + r.cols[ci], 0)
+  );
+  const annualTotal = annualCols.reduce((s, v) => s + v, 0);
+
+  const shortCats = CATEGORIES.map(c => c.emoji);
+
+  const wrap = document.getElementById('annualTable');
+  wrap.innerHTML = `
+    <table class="annual-table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          ${shortCats.map(e => `<th>${e}</th>`).join('')}
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${r.label}</td>
+            ${r.cols.map(v => `<td class="${v > 0 ? 'has-data' : ''}">${v > 0 ? '$' + v.toFixed(0) : '—'}</td>`).join('')}
+            <td class="total-col ${r.rowTotal > 0 ? 'has-data' : ''}">${r.rowTotal > 0 ? '$' + r.rowTotal.toFixed(0) : '—'}</td>
+          </tr>
+        `).join('')}
+        <tr>
+          <td>ANNUAL</td>
+          ${annualCols.map(v => `<td>${v > 0 ? '$' + v.toFixed(0) : '—'}</td>`).join('')}
+          <td>$${annualTotal.toFixed(0)}</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+// ── Export CSV ──
+function exportCSV() {
+  const label = `${MONTHS[statsMonth]} ${statsYear}`;
+  const monthExp = expenses.filter(e => {
+    if (e.monthIndex !== undefined && e.year !== undefined) {
+      return e.monthIndex === statsMonth && e.year === statsYear;
+    }
+    const parts = (e.month || '').split(' ');
+    return parts[0] === MONTHS[statsMonth] && parts[1] === String(statsYear);
+  });
+
+  if (monthExp.length === 0) { showToast('No expenses for this month', true); return; }
+
+  const headers = ['Date', 'Category', 'Description', 'Amount', 'Payment', 'Location', 'Notes'];
+  const rows = monthExp.map(e => [
+    e.date,
+    e.category,
+    `"${(e.description || '').replace(/"/g, '""')}"`,
+    e.amount.toFixed(2),
+    e.payment,
+    `"${(e.location || '').replace(/"/g, '""')}"`,
+    `"${(e.notes || '').replace(/"/g, '""')}"`,
+  ]);
+
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gastos_${MONTHS[statsMonth].toLowerCase()}_${statsYear}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✓ ${label} exported`);
+}
+
 // ── Views ──
 function showView(name) {
-  ['log','history','setup'].forEach(v => {
+  ['log', 'history', 'stats'].forEach(v => {
     document.getElementById(`view-${v}`).style.display = v === name ? 'block' : 'none';
     document.getElementById(`nav-${v}`).classList.toggle('active', v === name);
-    document.querySelectorAll('.tab').forEach((t,i) => {
-      t.classList.toggle('active', ['log','history','setup'][i] === name);
-    });
+  });
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['log', 'history', 'stats'][i] === name);
   });
   if (name === 'history') renderHistory();
+  if (name === 'stats') renderStats();
 }
 
-// ── Webhook ──
-function saveWebhook() {
-  const url = document.getElementById('webhookUrl').value.trim();
-  if (!url.startsWith('https://')) { showToast('Enter a valid URL', true); return; }
-  webhookUrl = url;
-  localStorage.setItem('webhookUrl', url);
-  document.getElementById('connectedBadge').style.display = 'block';
-  showToast('✓ Google Sheets connected!');
+// ── Helpers ──
+function saveExpenses() {
+  localStorage.setItem('expenses', JSON.stringify(expenses));
 }
 
-// ── Copy script ──
-function copyScript() {
-  const text = document.getElementById('scriptBox').innerText;
-  navigator.clipboard.writeText(text).then(() => showToast('Script copied!'));
-}
-
-// ── Toast ──
 function showToast(msg, isError = false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
