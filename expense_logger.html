@@ -756,6 +756,11 @@
         </div>
 
         <div class="field">
+          <div class="field-label">Date</div>
+          <input type="date" id="date">
+        </div>
+
+        <div class="field">
           <div class="field-label">Amount</div>
           <div class="amount-wrapper">
             <span class="currency">$</span>
@@ -868,6 +873,11 @@
       </div>
 
       <div class="field">
+        <div class="field-label">Date</div>
+        <input type="date" id="editDate">
+      </div>
+
+      <div class="field">
         <div class="field-label">Amount</div>
         <div class="amount-wrapper">
           <span class="currency">$</span>
@@ -950,6 +960,8 @@ function init() {
     d.toLocaleDateString('en-US', { weekday: 'long' }) + '<br>' +
     d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
+  document.getElementById('date').value = todayISO();
+
   buildCatGrid('catGrid', 'cat-pill', selectCat);
   buildCatGrid('editCatGrid', 'edit-cat-pill', selectEditCat);
   renderHistory();
@@ -992,9 +1004,11 @@ function submitExpense() {
   if (!description) { showToast('Add a description', true); return; }
   if (!payment) { showToast('Select payment method', true); return; }
 
-  const d = new Date();
+  const dateVal = document.getElementById('date').value || todayISO();
+  const d = new Date(dateVal + 'T12:00:00');
   const entry = {
     id: Date.now().toString(),
+    dateISO: dateVal,
     date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     month: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
     monthIndex: d.getMonth(),
@@ -1014,6 +1028,7 @@ function submitExpense() {
 
   showToast(`✓ $${amount.toFixed(2)} logged`);
 
+  document.getElementById('date').value = todayISO();
   document.getElementById('amount').value = '';
   document.getElementById('description').value = '';
   document.getElementById('payment').value = '';
@@ -1079,6 +1094,7 @@ function openEdit(id) {
     b.classList.toggle('selected', i === editSelectedCat);
   });
 
+  document.getElementById('editDate').value = entry.dateISO || todayISO();
   document.getElementById('editAmount').value = entry.amount;
   document.getElementById('editDescription').value = entry.description;
   document.getElementById('editPayment').value = entry.payment;
@@ -1110,10 +1126,18 @@ function saveEdit() {
   if (!amount || amount <= 0) { showToast('Enter an amount', true); return; }
   if (!description) { showToast('Add a description', true); return; }
 
+  const editDateVal = document.getElementById('editDate').value || todayISO();
+  const ed = new Date(editDateVal + 'T12:00:00');
+
   expenses = expenses.map(e => {
     if (e.id !== editingId) return e;
     return {
       ...e,
+      dateISO: editDateVal,
+      date: ed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      month: ed.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      monthIndex: ed.getMonth(),
+      year: ed.getFullYear(),
       category: CATEGORIES[editSelectedCat].label,
       emoji: CATEGORIES[editSelectedCat].emoji,
       amount,
@@ -1303,6 +1327,11 @@ function showView(name) {
 }
 
 // ── Helpers ──
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function saveExpenses() {
   localStorage.setItem('expenses', JSON.stringify(expenses));
 }
