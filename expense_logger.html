@@ -752,7 +752,7 @@
 
         <div class="field">
           <div class="field-label">Category</div>
-          <div class="cat-grid" id="catGrid"></div>
+          <select id="category"></select>
         </div>
 
         <div class="field">
@@ -869,7 +869,7 @@
 
       <div class="field">
         <div class="field-label">Category</div>
-        <div class="edit-cat-grid" id="editCatGrid"></div>
+        <select id="editCategory"></select>
       </div>
 
       <div class="field">
@@ -936,13 +936,16 @@ const CATEGORIES = [
   { label: "Gastos familiares", emoji: "👨‍👩‍👧" },
   { label: "Gas & Car",         emoji: "⛽" },
   { label: "Personal Care",     emoji: "💈" },
+  { label: "Rent & Housing",    emoji: "🏠" },
+  { label: "Medical",           emoji: "🏥" },
+  { label: "Subscriptions",     emoji: "📦" },
+  { label: "Gifts",             emoji: "🎁" },
+  { label: "Books & Courses",   emoji: "📚" },
 ];
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // ── State ──
-let selectedCat = null;
-let editSelectedCat = null;
 let editingId = null;
 
 let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
@@ -964,35 +967,16 @@ function init() {
 
   document.getElementById('date').value = todayISO();
 
-  buildCatGrid('catGrid', 'cat-pill', selectCat);
-  buildCatGrid('editCatGrid', 'edit-cat-pill', selectEditCat);
+  buildCatSelect('category');
+  buildCatSelect('editCategory');
   renderHistory();
   renderStats();
 }
 
-function buildCatGrid(containerId, pillClass, handler) {
-  const grid = document.getElementById(containerId);
-  grid.innerHTML = '';
-  CATEGORIES.forEach((cat, i) => {
-    const btn = document.createElement('button');
-    btn.className = pillClass;
-    btn.dataset.index = i;
-    btn.innerHTML = `<span class="emoji">${cat.emoji}</span>${cat.label}`;
-    btn.onclick = () => handler(i);
-    grid.appendChild(btn);
-  });
-}
-
-function selectCat(i) {
-  document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('selected'));
-  document.querySelectorAll('.cat-pill')[i].classList.add('selected');
-  selectedCat = i;
-}
-
-function selectEditCat(i) {
-  document.querySelectorAll('.edit-cat-pill').forEach(b => b.classList.remove('selected'));
-  document.querySelectorAll('.edit-cat-pill')[i].classList.add('selected');
-  editSelectedCat = i;
+function buildCatSelect(id) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = '<option value="">Select category...</option>' +
+    CATEGORIES.map((c, i) => `<option value="${i}">${c.emoji} ${c.label}</option>`).join('');
 }
 
 // ── Submit ──
@@ -1001,7 +985,8 @@ function submitExpense() {
   const description = document.getElementById('description').value.trim();
   const payment = document.getElementById('payment').value;
 
-  if (selectedCat === null) { showToast('Pick a category', true); return; }
+  const catIdx = parseInt(document.getElementById('category').value);
+  if (isNaN(catIdx)) { showToast('Pick a category', true); return; }
   if (!amount || amount <= 0) { showToast('Enter an amount', true); return; }
   if (!description) { showToast('Add a description', true); return; }
   if (!payment) { showToast('Select payment method', true); return; }
@@ -1015,8 +1000,8 @@ function submitExpense() {
     month: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
     monthIndex: d.getMonth(),
     year: d.getFullYear(),
-    category: CATEGORIES[selectedCat].label,
-    emoji: CATEGORIES[selectedCat].emoji,
+    category: CATEGORIES[catIdx].label,
+    emoji: CATEGORIES[catIdx].emoji,
     description,
     amount,
     payment,
@@ -1030,14 +1015,13 @@ function submitExpense() {
 
   showToast(`✓ $${amount.toFixed(2)} logged`);
 
+  document.getElementById('category').value = '';
   document.getElementById('date').value = todayISO();
   document.getElementById('amount').value = '';
   document.getElementById('description').value = '';
   document.getElementById('payment').value = '';
   document.getElementById('location').value = '';
   document.getElementById('notes').value = '';
-  document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('selected'));
-  selectedCat = null;
 
   renderHistory();
   renderStats();
@@ -1090,12 +1074,7 @@ function openEdit(id) {
   editingId = id;
 
   const catIdx = CATEGORIES.findIndex(c => c.label === entry.category);
-  editSelectedCat = catIdx >= 0 ? catIdx : null;
-
-  document.querySelectorAll('.edit-cat-pill').forEach((b, i) => {
-    b.classList.toggle('selected', i === editSelectedCat);
-  });
-
+  document.getElementById('editCategory').value = catIdx >= 0 ? catIdx : '';
   document.getElementById('editDate').value = entry.dateISO || todayISO();
   document.getElementById('editAmount').value = entry.amount;
   document.getElementById('editDescription').value = entry.description;
@@ -1111,7 +1090,6 @@ function closeEdit() {
   document.getElementById('editOverlay').classList.remove('open');
   document.body.style.overflow = '';
   editingId = null;
-  editSelectedCat = null;
 }
 
 function handleOverlayClick(e) {
@@ -1124,7 +1102,8 @@ function saveEdit() {
   const description = document.getElementById('editDescription').value.trim();
   const payment = document.getElementById('editPayment').value;
 
-  if (editSelectedCat === null) { showToast('Pick a category', true); return; }
+  const editCatIdx = parseInt(document.getElementById('editCategory').value);
+  if (isNaN(editCatIdx)) { showToast('Pick a category', true); return; }
   if (!amount || amount <= 0) { showToast('Enter an amount', true); return; }
   if (!description) { showToast('Add a description', true); return; }
 
@@ -1140,8 +1119,8 @@ function saveEdit() {
       month: ed.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       monthIndex: ed.getMonth(),
       year: ed.getFullYear(),
-      category: CATEGORIES[editSelectedCat].label,
-      emoji: CATEGORIES[editSelectedCat].emoji,
+      category: CATEGORIES[editCatIdx].label,
+      emoji: CATEGORIES[editCatIdx].emoji,
       amount,
       description,
       payment,
