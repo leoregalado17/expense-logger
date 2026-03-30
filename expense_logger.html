@@ -1272,15 +1272,16 @@ function exportCSV() {
 
   if (monthExp.length === 0) { showToast('No expenses for this month', true); return; }
 
+  const q = v => `"${String(v || '').replace(/"/g, '""')}"`;
   const headers = ['Date', 'Category', 'Description', 'Amount', 'Payment', 'Location', 'Notes'];
   const rows = monthExp.map(e => [
-    e.date,
-    e.category,
-    `"${(e.description || '').replace(/"/g, '""')}"`,
+    q(e.date),
+    q(e.category),
+    q(e.description),
     e.amount.toFixed(2),
-    e.payment,
-    `"${(e.location || '').replace(/"/g, '""')}"`,
-    `"${(e.notes || '').replace(/"/g, '""')}"`,
+    q(e.payment),
+    q(e.location),
+    q(e.notes),
   ]);
 
   const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
