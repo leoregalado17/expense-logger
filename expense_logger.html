@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>💸 Gastos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: #2a2a3a;
+    --accent: #c8f060;
+    --accent2: #6066f0;
+    --accent3: #f060a8;
+    --text: #f0f0f5;
+    --muted: #6060780;
+    --muted2: #50506a;
+    --success: #60f0a8;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* Background texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(96,102,240,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(200,240,96,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 0 100px;
+    min-height: 100dvh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 52px 24px 20px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .header-title {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .header-title span {
+    color: var(--accent);
+  }
+
+  .header-date {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted2);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 24px 20px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 8px 4px;
+    border: none;
+    background: var(--surface);
+    color: var(--muted2);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* ── FORM CARD ── */
+  .form-card {
+    margin: 0 16px;
+    background: var(--surface);
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .form-inner {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted2);
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 15px;
+    padding: 13px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .field textarea {
+    resize: none;
+    height: 72px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2360607a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+
+  /* Amount field special */
+  .amount-wrapper {
+    position: relative;
+  }
+
+  .amount-wrapper .currency {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    pointer-events: none;
+  }
+
+  .amount-wrapper input {
+    padding-left: 30px;
+    font-size: 24px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    letter-spacing: -0.5px;
+  }
+
+  /* Category pills */
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .cat-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted2);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cat-pill .emoji { font-size: 16px; flex-shrink: 0; }
+
+  .cat-pill.selected {
+    border-color: var(--accent);
+    background: rgba(200, 240, 96, 0.1);
+    color: var(--accent);
+  }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 17px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .submit-btn.loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 1s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--success);
+    color: var(--bg);
+    padding: 12px 24px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 100;
+    white-space: nowrap;
+  }
+
+  .toast.error { background: var(--accent3); color: white; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── LOG VIEW ── */
+  .log-view { padding: 0 16px; }
+
+  .log-month {
+    margin-bottom: 20px;
+  }
+
+  .log-month-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    padding: 0 8px 10px;
+  }
+
+  .log-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    border: 1px solid var(--border);
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-emoji { font-size: 20px; flex-shrink: 0; }
+
+  .log-info { flex: 1; min-width: 0; }
+
+  .log-desc {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .log-meta {
+    font-size: 11px;
+    color: var(--muted2);
+    font-family: var(--font-mono);
+    margin-top: 2px;
+  }
+
+  .log-right { text-align: right; flex-shrink: 0; }
+
+  .log-amount {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .log-card {
+    font-size: 10px;
+    color: var(--muted2);
+    margin-top: 2px;
+    font-family: var(--font-mono);
+  }
+
+  .log-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+
+  .log-total-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted2);
+  }
+
+  .log-total-amt {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--muted2);
+  }
+
+  .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.6; }
+
+  /* ── SETUP VIEW ── */
+  .setup-view { padding: 0 16px; }
+
+  .setup-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .setup-card-header {
+    padding: 16px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .setup-card-body { padding: 20px; }
+
+  .setup-step {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 18px;
+    align-items: flex-start;
+  }
+
+  .setup-step:last-child { margin-bottom: 0; }
+
+  .step-num {
+    width: 26px;
+    height: 26px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .step-text { font-size: 13px; line-height: 1.6; color: var(--text); }
+  .step-text a { color: var(--accent); text-decoration: none; }
+  .step-text code {
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent2);
+    word-break: break-all;
+  }
+
+  .script-box {
+    background: #0d1117;
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.7;
+    color: #a8d8a8;
+    overflow-x: auto;
+    white-space: pre;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+
+  .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .url-input-wrap { position: relative; }
+  .url-input-wrap input {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 12px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .url-input-wrap input:focus { border-color: var(--accent); }
+
+  .save-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 13px;
+    background: var(--accent2);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .save-btn:active { opacity: 0.8; }
+
+  .connected-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(96, 240, 168, 0.1);
+    border: 1px solid var(--success);
+    color: var(--success);
+    padding: 6px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: rgba(13,13,20,0.92);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+    z-index: 50;
+  }
+
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .nav-icon { font-size: 20px; }
+
+  .nav-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted2);
+    letter-spacing: 0.5px;
+  }
+
+  .nav-btn.active .nav-label { color: var(--accent); }
+  .nav-btn.active .nav-icon { filter: drop-shadow(0 0 6px var(--accent)); }
+
+  select option { background: #1c1c26; color: #f0f0f5; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="header-title">gastos<span>.</span></div>
+    </div>
+    <div class="header-date" id="headerDate"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showView('log')">Log</button>
+    <button class="tab" onclick="showView('history')">History</button>
+    <button class="tab" onclick="showView('setup')">Setup</button>
+  </div>
+
+  <!-- LOG VIEW -->
+  <div id="view-log">
+    <div class="form-card">
+      <div class="form-inner">
+
+        <div class="field">
+          <div class="field-label">Category</div>
+          <div class="cat-grid" id="catGrid"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Amount</div>
+          <div class="amount-wrapper">
+            <span class="currency">$</span>
+            <input type="number" id="amount" inputmode="decimal" placeholder="0.00" min="0" step="0.01">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Description</div>
+          <input type="text" id="description" placeholder="What did you spend on?">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Payment Method</div>
+          <select id="payment">
+            <option value="">Select card / method</option>
+            <option>Robinhood</option>
+            <option>Chase Sapphire</option>
+            <option>Chase Freedom</option>
+            <option>Discover</option>
+            <option>Wells Fargo</option>
+            <option>Bilt</option>
+            <option>Bi</option>
+            <option>Apple Card</option>
+            <option>Cash</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Location (optional)</div>
+          <input type="text" id="location" placeholder="e.g. Chick-fil-A, Amazon...">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Notes (optional)</div>
+          <textarea id="notes" placeholder="Any extra details..."></textarea>
+        </div>
+
+        <button class="submit-btn" id="submitBtn" onclick="submitExpense()">
+          LOG EXPENSE →
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div id="view-history" style="display:none">
+    <div class="log-view" id="logView"></div>
+  </div>
+
+  <!-- SETUP VIEW -->
+  <div id="view-setup" style="display:none">
+    <div class="setup-view">
+
+      <div class="setup-card">
+        <div class="setup-card-header">Connect to Google Sheets</div>
+        <div class="setup-card-body">
+
+          <div class="setup-step">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              Go to <a href="https://sheets.new" target="_blank">sheets.new</a> and create a new spreadsheet. Name it <strong>Budget 2026</strong>.
+            </div>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              Click <strong>Extensions → Apps Script</strong>. Delete everything in the editor and paste the script below.
+            </div>
+          </div>
+
+          <div style="position:relative; margin-bottom: 18px;">
+            <div class="script-box" id="scriptBox">function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = data.month || "Expenses";
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      sheet.appendRow([
+        "Date","Category","Description",
+        "Amount","Payment","Location","Notes"
+      ]);
+      sheet.getRange(1,1,1,7).setFontWeight("bold");
+    }
+    sheet.appendRow([
+      data.date, data.category, data.description,
+      data.amount, data.payment, data.location, data.notes
+    ]);
+    return ContentService
+      .createTextOutput(JSON.stringify({status:"ok"}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({status:"error",message:err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</div>
+            <button class="copy-btn" onclick="copyScript()">Copy</button>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              Click <strong>Deploy → New deployment</strong>. Set type to <strong>Web app</strong>, set "Who has access" to <strong>Anyone</strong>, click Deploy. Copy the Web App URL it gives you.
+            </div>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">4</div>
+            <div class="step-text">Paste your Web App URL below and tap Save.</div>
+          </div>
+
+          <div class="url-input-wrap">
+            <input type="url" id="webhookUrl" placeholder="https://script.google.com/macros/s/..." value="">
+          </div>
+          <button class="save-btn" onclick="saveWebhook()">Save & Connect</button>
+
+          <div id="connectedBadge" style="display:none; margin-top:14px;">
+            <span class="connected-badge">✓ Connected to Google Sheets</span>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="setup-card">
+        <div class="setup-card-header">Add to Home Screen</div>
+        <div class="setup-card-body">
+          <div class="setup-step">
+            <div class="step-num">i</div>
+            <div class="step-text"><strong>iPhone:</strong> Tap the Share button in Safari → "Add to Home Screen" → Add. Done — it'll look like an app icon.</div>
+          </div>
+          <div class="setup-step">
+            <div class="step-num">A</div>
+            <div class="step-text"><strong>Android:</strong> Tap the three-dot menu in Chrome → "Add to Home screen".</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-btn active" id="nav-log" onclick="showView('log')">
+    <span class="nav-icon">✏️</span>
+    <span class="nav-label">LOG</span>
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="showView('history')">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">HISTORY</span>
+  </button>
+  <button class="nav-btn" id="nav-setup" onclick="showView('setup')">
+    <span class="nav-icon">⚙️</span>
+    <span class="nav-label">SETUP</span>
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CATEGORIES = [
+  { label: "Eating Out",   emoji: "🍽️" },
+  { label: "Drinking",     emoji: "🍻" },
+  { label: "Shopping (want)", emoji: "🛍️" },
+  { label: "Shopping (need)", emoji: "🛒" },
+  { label: "Groceries",   emoji: "🥦" },
+  { label: "Travel – Flights", emoji: "✈️" },
+  { label: "Travel – Food",  emoji: "🍜" },
+];
+
+let selectedCat = null;
+let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
+let webhookUrl = localStorage.getItem('webhookUrl') || '';
+
+// ── Init ──
+function init() {
+  // date header
+  const now = new Date();
+  document.getElementById('headerDate').innerHTML =
+    now.toLocaleDateString('en-US', {weekday:'long'}) + '<br>' +
+    now.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+
+  // build category grid
+  const grid = document.getElementById('catGrid');
+  CATEGORIES.forEach((cat, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-pill';
+    btn.innerHTML = `<span class="emoji">${cat.emoji}</span>${cat.label}`;
+    btn.onclick = () => selectCat(i, btn);
+    grid.appendChild(btn);
+  });
+
+  // load webhook
+  if (webhookUrl) {
+    document.getElementById('webhookUrl').value = webhookUrl;
+    document.getElementById('connectedBadge').style.display = 'block';
+  }
+
+  renderHistory();
+}
+
+function selectCat(i, btn) {
+  document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedCat = i;
+}
+
+// ── Submit ──
+async function submitExpense() {
+  const amount = parseFloat(document.getElementById('amount').value);
+  const description = document.getElementById('description').value.trim();
+  const payment = document.getElementById('payment').value;
+
+  if (selectedCat === null) { showToast('Pick a category', true); return; }
+  if (!amount || amount <= 0) { showToast('Enter an amount', true); return; }
+  if (!description) { showToast('Add a description', true); return; }
+  if (!payment) { showToast('Select payment method', true); return; }
+
+  const now = new Date();
+  const entry = {
+    date: now.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}),
+    month: now.toLocaleDateString('en-US', {month:'short', year:'numeric'}),
+    category: CATEGORIES[selectedCat].label,
+    emoji: CATEGORIES[selectedCat].emoji,
+    description,
+    amount,
+    payment,
+    location: document.getElementById('location').value.trim(),
+    notes: document.getElementById('notes').value.trim(),
+    ts: now.toISOString(),
+  };
+
+  // Save locally
+  expenses.unshift(entry);
+  localStorage.setItem('expenses', JSON.stringify(expenses));
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = 'Saving...';
+
+  // Send to Google Sheets
+  if (webhookUrl) {
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      showToast(`✓ $${amount.toFixed(2)} logged to Sheets`);
+    } catch (err) {
+      showToast('Saved locally (Sheets offline)', true);
+    }
+  } else {
+    showToast(`✓ $${amount.toFixed(2)} saved locally`);
+  }
+
+  // Reset form
+  document.getElementById('amount').value = '';
+  document.getElementById('description').value = '';
+  document.getElementById('payment').value = '';
+  document.getElementById('location').value = '';
+  document.getElementById('notes').value = '';
+  document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('selected'));
+  selectedCat = null;
+
+  btn.disabled = false;
+  btn.classList.remove('loading');
+  btn.textContent = 'LOG EXPENSE →';
+
+  renderHistory();
+}
+
+// ── History ──
+function renderHistory() {
+  const container = document.getElementById('logView');
+  if (expenses.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="big">📭</div><p>No expenses logged yet.<br>Start tracking above!</p></div>`;
+    return;
+  }
+
+  // Group by month
+  const byMonth = {};
+  expenses.forEach(e => {
+    if (!byMonth[e.month]) byMonth[e.month] = [];
+    byMonth[e.month].push(e);
+  });
+
+  container.innerHTML = '';
+  Object.entries(byMonth).forEach(([month, items]) => {
+    const total = items.reduce((s, e) => s + e.amount, 0);
+    const div = document.createElement('div');
+    div.className = 'log-month';
+    div.innerHTML = `<div class="log-month-title">${month}</div>` +
+      items.map(e => `
+        <div class="log-entry">
+          <span class="log-emoji">${e.emoji}</span>
+          <div class="log-info">
+            <div class="log-desc">${e.description}</div>
+            <div class="log-meta">${e.date} · ${e.category}</div>
+          </div>
+          <div class="log-right">
+            <div class="log-amount">$${e.amount.toFixed(2)}</div>
+            <div class="log-card">${e.payment}</div>
+          </div>
+        </div>`).join('') +
+      `<div class="log-total">
+        <span class="log-total-label">Month total</span>
+        <span class="log-total-amt">$${total.toFixed(2)}</span>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+// ── Views ──
+function showView(name) {
+  ['log','history','setup'].forEach(v => {
+    document.getElementById(`view-${v}`).style.display = v === name ? 'block' : 'none';
+    document.getElementById(`nav-${v}`).classList.toggle('active', v === name);
+    document.querySelectorAll('.tab').forEach((t,i) => {
+      t.classList.toggle('active', ['log','history','setup'][i] === name);
+    });
+  });
+  if (name === 'history') renderHistory();
+}
+
+// ── Webhook ──
+function saveWebhook() {
+  const url = document.getElementById('webhookUrl').value.trim();
+  if (!url.startsWith('https://')) { showToast('Enter a valid URL', true); return; }
+  webhookUrl = url;
+  localStorage.setItem('webhookUrl', url);
+  document.getElementById('connectedBadge').style.display = 'block';
+  showToast('✓ Google Sheets connected!');
+}
+
+// ── Copy script ──
+function copyScript() {
+  const text = document.getElementById('scriptBox').innerText;
+  navigator.clipboard.writeText(text).then(() => showToast('Script copied!'));
+}
+
+// ── Toast ──
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+init();
+</script>
+</body>
+</html>
