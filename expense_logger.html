@@ -1084,11 +1084,7 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 let editingId = null;
 
 const DEFAULT_PAYMENTS = ['Credit','Debit','Cash'];
-let paymentMethods = JSON.parse(localStorage.getItem('paymentMethods') || 'null');
-if (!paymentMethods || paymentMethods.length > 3 && paymentMethods.includes('Robinhood')) {
-  paymentMethods = [...DEFAULT_PAYMENTS];
-  localStorage.setItem('paymentMethods', JSON.stringify(paymentMethods));
-}
+let paymentMethods = JSON.parse(localStorage.getItem('paymentMethods') || 'null') || [...DEFAULT_PAYMENTS];
 
 let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
 // Migrate: add IDs to old entries
