@@ -693,6 +693,91 @@
 
   select option { background: #1c1c26; color: #f0f0f5; }
 
+  /* ── SETTINGS VIEW ── */
+  .settings-view { padding: 0 16px; }
+
+  .settings-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .settings-card-header {
+    padding: 14px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .settings-card-body { padding: 16px 20px; }
+
+  .method-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .method-row:last-of-type { border-bottom: none; }
+
+  .method-delete {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .method-delete:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  .add-method-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .add-method-row input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 14px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .add-method-row input:focus { border-color: var(--accent); }
+
+  .add-method-btn {
+    padding: 11px 16px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .add-method-btn:active { opacity: 0.8; }
+
   /* Edit cat grid (smaller) */
   .edit-cat-grid {
     display: grid;
@@ -743,6 +828,7 @@
     <button class="tab active" onclick="showView('log')">Log</button>
     <button class="tab" onclick="showView('history')">History</button>
     <button class="tab" onclick="showView('stats')">Stats</button>
+    <button class="tab" onclick="showView('settings')">Settings</button>
   </div>
 
   <!-- LOG VIEW -->
@@ -775,17 +861,7 @@
 
         <div class="field">
           <div class="field-label">Payment Method</div>
-          <select id="payment">
-            <option value="">Select card / method</option>
-            <option>Robinhood</option>
-            <option>Chase Sapphire</option>
-            <option>Chase Freedom</option>
-            <option>Discover</option>
-            <option>Wells Fargo</option>
-            <option>Bilt</option>
-            <option>Apple Card</option>
-            <option>Cash</option>
-          </select>
+          <select id="payment"></select>
         </div>
 
         <div class="field">
@@ -839,6 +915,26 @@
 
     </div>
   </div>
+
+  <!-- SETTINGS VIEW -->
+  <div id="view-settings" style="display:none">
+    <div class="settings-view">
+
+      <div class="settings-card">
+        <div class="settings-card-header">PAYMENT METHODS</div>
+        <div class="settings-card-body">
+          <div id="paymentMethodsList"></div>
+          <div class="add-method-row">
+            <input type="text" id="newPaymentInput" placeholder="e.g. Chase Sapphire" maxlength="40"
+              onkeydown="if(event.key==='Enter') addPaymentMethod()">
+            <button class="add-method-btn" onclick="addPaymentMethod()">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <!-- Bottom Nav -->
@@ -854,6 +950,10 @@
   <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
     <span class="nav-icon">📊</span>
     <span class="nav-label">STATS</span>
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="showView('settings')">
+    <span class="nav-icon">⚙️</span>
+    <span class="nav-label">SETTINGS</span>
   </button>
 </div>
 
@@ -892,17 +992,7 @@
 
       <div class="field">
         <div class="field-label">Payment Method</div>
-        <select id="editPayment">
-          <option value="">Select card / method</option>
-          <option>Robinhood</option>
-          <option>Chase Sapphire</option>
-          <option>Chase Freedom</option>
-          <option>Discover</option>
-          <option>Wells Fargo</option>
-          <option>Bilt</option>
-          <option>Apple Card</option>
-          <option>Cash</option>
-        </select>
+        <select id="editPayment"></select>
       </div>
 
       <div class="field">
@@ -948,6 +1038,9 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 // ── State ──
 let editingId = null;
 
+const DEFAULT_PAYMENTS = ['Robinhood','Chase Sapphire','Chase Freedom','Discover','Wells Fargo','Bilt','Apple Card','Cash'];
+let paymentMethods = JSON.parse(localStorage.getItem('paymentMethods') || 'null') || [...DEFAULT_PAYMENTS];
+
 let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
 // Migrate: add IDs to old entries
 expenses = expenses.map((e, i) => e.id ? e : { ...e, id: `${Date.now()}-${i}` });
@@ -969,6 +1062,8 @@ function init() {
 
   buildCatSelect('category');
   buildCatSelect('editCategory');
+  buildPaymentSelect('payment');
+  buildPaymentSelect('editPayment');
   renderHistory();
   renderStats();
 }
@@ -977,6 +1072,52 @@ function buildCatSelect(id) {
   const sel = document.getElementById(id);
   sel.innerHTML = '<option value="">Select category...</option>' +
     CATEGORIES.map((c, i) => `<option value="${i}">${c.emoji} ${c.label}</option>`).join('');
+}
+
+function buildPaymentSelect(id) {
+  const sel = document.getElementById(id);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select card / method</option>' +
+    paymentMethods.map(m => `<option value="${m}">${m}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+function savePaymentMethods() {
+  localStorage.setItem('paymentMethods', JSON.stringify(paymentMethods));
+}
+
+function renderPaymentMethodsList() {
+  const container = document.getElementById('paymentMethodsList');
+  if (!container) return;
+  container.innerHTML = paymentMethods.map((m, i) => `
+    <div class="method-row">
+      <span>${m}</span>
+      <button class="method-delete" onclick="deletePaymentMethod(${i})">Remove</button>
+    </div>`).join('');
+}
+
+function addPaymentMethod() {
+  const input = document.getElementById('newPaymentInput');
+  const val = input.value.trim();
+  if (!val) { showToast('Enter a name', true); return; }
+  if (paymentMethods.includes(val)) { showToast('Already exists', true); return; }
+  paymentMethods.push(val);
+  savePaymentMethods();
+  buildPaymentSelect('payment');
+  buildPaymentSelect('editPayment');
+  renderPaymentMethodsList();
+  input.value = '';
+  showToast(`✓ "${val}" added`);
+}
+
+function deletePaymentMethod(i) {
+  const name = paymentMethods[i];
+  paymentMethods.splice(i, 1);
+  savePaymentMethods();
+  buildPaymentSelect('payment');
+  buildPaymentSelect('editPayment');
+  renderPaymentMethodsList();
+  showToast(`"${name}" removed`);
 }
 
 // ── Submit ──
@@ -1297,15 +1438,17 @@ function exportCSV() {
 
 // ── Views ──
 function showView(name) {
-  ['log', 'history', 'stats'].forEach(v => {
+  const views = ['log', 'history', 'stats', 'settings'];
+  views.forEach(v => {
     document.getElementById(`view-${v}`).style.display = v === name ? 'block' : 'none';
     document.getElementById(`nav-${v}`).classList.toggle('active', v === name);
   });
   document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', ['log', 'history', 'stats'][i] === name);
+    t.classList.toggle('active', views[i] === name);
   });
   if (name === 'history') renderHistory();
   if (name === 'stats') renderStats();
+  if (name === 'settings') renderPaymentMethodsList();
 }
 
 // ── Helpers ──
