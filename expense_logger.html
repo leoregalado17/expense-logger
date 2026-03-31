@@ -778,6 +778,32 @@
 
   .add-method-btn:active { opacity: 0.8; }
 
+  .suggestion-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .suggestion-pill {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 100px;
+    color: var(--muted2);
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .suggestion-pill:active {
+    border-color: var(--accent);
+    background: rgba(200, 240, 96, 0.1);
+    color: var(--accent);
+  }
+
   /* Edit cat grid (smaller) */
   .edit-cat-grid {
     display: grid;
@@ -921,6 +947,24 @@
     <div class="settings-view">
 
       <div class="settings-card">
+        <div class="settings-card-header">CATEGORIES</div>
+        <div class="settings-card-body">
+          <div id="categoriesList"></div>
+          <div id="categorySuggestions" style="margin-top:14px"></div>
+          <div style="margin-top:14px">
+            <div class="field-label" style="margin-bottom:8px">ADD CUSTOM</div>
+            <div class="add-method-row">
+              <input type="text" id="newCatEmoji" placeholder="😀" style="width:56px; flex:none; text-align:center; font-size:20px"
+                maxlength="4">
+              <input type="text" id="newCatName" placeholder="Category name" style="flex:1"
+                onkeydown="if(event.key==='Enter') addCustomCategory()">
+              <button class="add-method-btn" onclick="addCustomCategory()">+ Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
         <div class="settings-card-header">PAYMENT METHODS</div>
         <div class="settings-card-body">
           <div id="paymentMethodsList"></div>
@@ -1015,7 +1059,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const CATEGORIES = [
+const SUGGESTED_CATEGORIES = [
   { label: "Eating Out",        emoji: "🍽️" },
   { label: "Drinking",          emoji: "🍻" },
   { label: "Shopping (want)",   emoji: "🛍️" },
@@ -1032,6 +1076,8 @@ const CATEGORIES = [
   { label: "Gifts",             emoji: "🎁" },
   { label: "Books & Courses",   emoji: "📚" },
 ];
+
+let CATEGORIES = JSON.parse(localStorage.getItem('categories') || '[]');
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -1122,6 +1168,78 @@ function deletePaymentMethod(i) {
   buildPaymentSelect('editPayment');
   renderPaymentMethodsList();
   showToast(`"${name}" removed`);
+}
+
+// ── Category Management ──
+function saveCategories() {
+  localStorage.setItem('categories', JSON.stringify(CATEGORIES));
+}
+
+function refreshCatSelects() {
+  buildCatSelect('category');
+  buildCatSelect('editCategory');
+}
+
+function renderCategoriesList() {
+  const container = document.getElementById('categoriesList');
+  if (!container) return;
+
+  // Current categories
+  container.innerHTML = CATEGORIES.map((c, i) => `
+    <div class="method-row">
+      <span>${c.emoji} ${c.label}</span>
+      <button class="method-delete" onclick="deleteCategory(${i})">Remove</button>
+    </div>`).join('');
+
+  // Suggestions — filter out already-added ones
+  const suggContainer = document.getElementById('categorySuggestions');
+  const existing = new Set(CATEGORIES.map(c => c.label));
+  const available = SUGGESTED_CATEGORIES.filter(c => !existing.has(c.label));
+
+  if (available.length > 0) {
+    suggContainer.style.display = 'block';
+    suggContainer.innerHTML = '<div class="field-label" style="margin-bottom:8px">SUGGESTED</div>' +
+      '<div class="suggestion-grid">' +
+      available.map((c, i) =>
+        `<button class="suggestion-pill" onclick="addSuggestedCategory(${SUGGESTED_CATEGORIES.indexOf(c)})">${c.emoji} ${c.label}</button>`
+      ).join('') + '</div>';
+  } else {
+    suggContainer.style.display = 'none';
+  }
+}
+
+function addSuggestedCategory(sugIdx) {
+  const cat = SUGGESTED_CATEGORIES[sugIdx];
+  if (CATEGORIES.find(c => c.label === cat.label)) { showToast('Already added', true); return; }
+  CATEGORIES.push({ ...cat });
+  saveCategories();
+  refreshCatSelects();
+  renderCategoriesList();
+  showToast(`✓ ${cat.emoji} ${cat.label} added`);
+}
+
+function addCustomCategory() {
+  const emoji = document.getElementById('newCatEmoji').value.trim();
+  const name = document.getElementById('newCatName').value.trim();
+  if (!emoji) { showToast('Pick an emoji', true); return; }
+  if (!name) { showToast('Enter a name', true); return; }
+  if (CATEGORIES.find(c => c.label === name)) { showToast('Already exists', true); return; }
+  CATEGORIES.push({ label: name, emoji: emoji });
+  saveCategories();
+  refreshCatSelects();
+  renderCategoriesList();
+  document.getElementById('newCatEmoji').value = '';
+  document.getElementById('newCatName').value = '';
+  showToast(`✓ ${emoji} ${name} added`);
+}
+
+function deleteCategory(i) {
+  const cat = CATEGORIES[i];
+  CATEGORIES.splice(i, 1);
+  saveCategories();
+  refreshCatSelects();
+  renderCategoriesList();
+  showToast(`${cat.emoji} ${cat.label} removed`);
 }
 
 // ── Submit ──
@@ -1452,7 +1570,7 @@ function showView(name) {
   });
   if (name === 'history') renderHistory();
   if (name === 'stats') renderStats();
-  if (name === 'settings') renderPaymentMethodsList();
+  if (name === 'settings') { renderCategoriesList(); renderPaymentMethodsList(); }
 }
 
 // ── Helpers ──
