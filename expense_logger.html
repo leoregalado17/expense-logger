@@ -798,6 +798,30 @@
     white-space: nowrap;
   }
 
+  .balance-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .balance-row:last-child { border-bottom: none; }
+
+  .balance-row.net {
+    padding-top: 12px;
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  .balance-label { color: var(--muted2); font-weight: 600; }
+  .balance-amt { font-family: var(--font-mono); }
+  .balance-amt.income { color: var(--success); }
+  .balance-amt.expense { color: var(--accent3); }
+  .balance-net-positive { color: var(--success); }
+  .balance-net-negative { color: var(--accent3); }
+
   .suggestion-pill:active {
     border-color: var(--accent);
     background: rgba(200, 240, 96, 0.1);
@@ -932,6 +956,24 @@
         </div>
       </div>
 
+      <div class="stats-card" id="balanceCard" style="display:none">
+        <div class="stats-card-header">BALANCE</div>
+        <div class="stats-card-body">
+          <div class="balance-row">
+            <span class="balance-label">Income</span>
+            <span class="balance-amt income" id="balanceIncome">$0.00</span>
+          </div>
+          <div class="balance-row">
+            <span class="balance-label">Expenses</span>
+            <span class="balance-amt expense" id="balanceExpenses">$0.00</span>
+          </div>
+          <div class="balance-row net">
+            <span class="balance-label">Net Balance</span>
+            <span class="balance-amt" id="balanceNet">$0.00</span>
+          </div>
+        </div>
+      </div>
+
       <button class="export-btn" id="exportBtn" onclick="exportCSV()">↓ Export CSV</button>
 
       <div class="stats-card">
@@ -945,6 +987,24 @@
   <!-- SETTINGS VIEW -->
   <div id="view-settings" style="display:none">
     <div class="settings-view">
+
+      <div class="settings-card">
+        <div class="settings-card-header">INCOME SOURCES</div>
+        <div class="settings-card-body">
+          <div id="incomeSourcesList"></div>
+          <div class="add-method-row">
+            <input type="text" id="newIncomeName" placeholder="e.g. Salary" style="flex:1"
+              onkeydown="if(event.key==='Enter') document.getElementById('newIncomeAmt').focus()">
+            <div class="amount-wrapper" style="width:110px; flex:none">
+              <span class="currency" style="font-size:14px">$</span>
+              <input type="number" id="newIncomeAmt" inputmode="decimal" placeholder="0" min="0" step="0.01"
+                style="padding-left:24px; font-size:14px"
+                onkeydown="if(event.key==='Enter') addIncomeSource()">
+            </div>
+            <button class="add-method-btn" onclick="addIncomeSource()">+ Add</button>
+          </div>
+        </div>
+      </div>
 
       <div class="settings-card">
         <div class="settings-card-header">CATEGORIES</div>
@@ -1082,6 +1142,8 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 // ── State ──
 let editingId = null;
+
+let incomeSources = JSON.parse(localStorage.getItem('incomeSources') || '[]');
 
 const DEFAULT_PAYMENTS = ['Credit','Debit','Cash'];
 let paymentMethods = JSON.parse(localStorage.getItem('paymentMethods') || 'null') || [...DEFAULT_PAYMENTS];
@@ -1249,6 +1311,58 @@ function buildEmojiSelect() {
   const sel = document.getElementById('newCatEmoji');
   if (!sel) return;
   sel.innerHTML = EMOJI_OPTIONS.map(e => `<option value="${e}">${e}</option>`).join('');
+}
+
+// ── Income Management ──
+function saveIncomeSources() {
+  localStorage.setItem('incomeSources', JSON.stringify(incomeSources));
+}
+
+function getMonthlyIncome() {
+  return incomeSources.reduce((s, src) => s + src.amount, 0);
+}
+
+function renderIncomeSourcesList() {
+  const container = document.getElementById('incomeSourcesList');
+  if (!container) return;
+  const total = getMonthlyIncome();
+  container.innerHTML = incomeSources.map((src, i) => `
+    <div class="method-row">
+      <span>${src.name}</span>
+      <div style="display:flex; align-items:center; gap:10px">
+        <span style="font-family:var(--font-mono); font-size:13px; color:var(--success)">$${src.amount.toFixed(2)}</span>
+        <button class="method-delete" onclick="deleteIncomeSource(${i})">Remove</button>
+      </div>
+    </div>`).join('') +
+    (incomeSources.length > 1 ? `<div class="method-row" style="border-bottom:none; color:var(--accent)">
+      <span style="font-weight:700">Total Monthly</span>
+      <span style="font-family:var(--font-mono); font-size:14px; font-weight:700">$${total.toFixed(2)}</span>
+    </div>` : '');
+}
+
+function addIncomeSource() {
+  const nameInput = document.getElementById('newIncomeName');
+  const amtInput = document.getElementById('newIncomeAmt');
+  const name = nameInput.value.trim();
+  const amount = parseFloat(amtInput.value);
+  if (!name) { showToast('Enter a name', true); return; }
+  if (!amount || amount <= 0) { showToast('Enter an amount', true); return; }
+  incomeSources.push({ name, amount });
+  saveIncomeSources();
+  renderIncomeSourcesList();
+  nameInput.value = '';
+  amtInput.value = '';
+  renderStats();
+  showToast(`✓ ${name} added`);
+}
+
+function deleteIncomeSource(i) {
+  const name = incomeSources[i].name;
+  incomeSources.splice(i, 1);
+  saveIncomeSources();
+  renderIncomeSourcesList();
+  renderStats();
+  showToast(`"${name}" removed`);
 }
 
 // ── Submit ──
@@ -1473,6 +1587,20 @@ function renderStats() {
 
   document.getElementById('statsMonthTotal').textContent = `$${monthTotal.toFixed(2)}`;
 
+  // Balance card
+  const monthlyIncome = getMonthlyIncome();
+  const balanceCard = document.getElementById('balanceCard');
+  if (monthlyIncome > 0) {
+    balanceCard.style.display = '';
+    const net = monthlyIncome - monthTotal;
+    document.getElementById('balanceIncome').textContent = `$${monthlyIncome.toFixed(2)}`;
+    document.getElementById('balanceExpenses').textContent = `-$${monthTotal.toFixed(2)}`;
+    document.getElementById('balanceNet').textContent = `${net >= 0 ? '' : '-'}$${Math.abs(net).toFixed(2)}`;
+    document.getElementById('balanceNet').className = `balance-amt ${net >= 0 ? 'balance-net-positive' : 'balance-net-negative'}`;
+  } else {
+    balanceCard.style.display = 'none';
+  }
+
   renderAnnualTable();
 }
 
@@ -1579,7 +1707,7 @@ function showView(name) {
   });
   if (name === 'history') renderHistory();
   if (name === 'stats') renderStats();
-  if (name === 'settings') { renderCategoriesList(); renderPaymentMethodsList(); }
+  if (name === 'settings') { renderIncomeSourcesList(); renderCategoriesList(); renderPaymentMethodsList(); }
 }
 
 // ── Helpers ──
