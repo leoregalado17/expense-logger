@@ -798,6 +798,11 @@
     white-space: nowrap;
   }
 
+  .income-btn { background: var(--success); }
+
+  .log-entry.income-entry { border-color: rgba(96,240,168,0.3); }
+  .log-entry.income-entry .log-amount { color: var(--success); }
+
   .balance-row {
     display: flex;
     justify-content: space-between;
@@ -876,6 +881,7 @@
 
   <div class="tabs">
     <button class="tab active" onclick="showView('log')">Log</button>
+    <button class="tab" onclick="showView('income')">Income</button>
     <button class="tab" onclick="showView('history')">History</button>
     <button class="tab" onclick="showView('stats')">Stats</button>
     <button class="tab" onclick="showView('settings')">Settings</button>
@@ -930,6 +936,44 @@
 
       </div>
     </div>
+  </div>
+
+  <!-- INCOME VIEW -->
+  <div id="view-income" style="display:none">
+    <div class="form-card">
+      <div class="form-inner">
+
+        <div class="field">
+          <div class="field-label">Source</div>
+          <input type="text" id="incomeSource" placeholder="e.g. Salary, Freelance, Refund...">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Date</div>
+          <input type="date" id="incomeDate">
+        </div>
+
+        <div class="field">
+          <div class="field-label">Amount</div>
+          <div class="amount-wrapper">
+            <span class="currency">$</span>
+            <input type="number" id="incomeAmount" inputmode="decimal" placeholder="0.00" min="0" step="0.01">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Notes (optional)</div>
+          <textarea id="incomeNotes" placeholder="Any details..."></textarea>
+        </div>
+
+        <button class="submit-btn income-btn" onclick="submitIncome()">
+          LOG INCOME →
+        </button>
+
+      </div>
+    </div>
+
+    <div class="log-view" id="incomeLogView" style="margin-top:20px"></div>
   </div>
 
   <!-- HISTORY VIEW -->
@@ -989,24 +1033,6 @@
     <div class="settings-view">
 
       <div class="settings-card">
-        <div class="settings-card-header">INCOME SOURCES</div>
-        <div class="settings-card-body">
-          <div id="incomeSourcesList"></div>
-          <div class="add-method-row">
-            <input type="text" id="newIncomeName" placeholder="e.g. Salary" style="flex:1"
-              onkeydown="if(event.key==='Enter') document.getElementById('newIncomeAmt').focus()">
-            <div class="amount-wrapper" style="width:110px; flex:none">
-              <span class="currency" style="font-size:14px">$</span>
-              <input type="number" id="newIncomeAmt" inputmode="decimal" placeholder="0" min="0" step="0.01"
-                style="padding-left:24px; font-size:14px"
-                onkeydown="if(event.key==='Enter') addIncomeSource()">
-            </div>
-            <button class="add-method-btn" onclick="addIncomeSource()">+ Add</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-card">
         <div class="settings-card-header">CATEGORIES</div>
         <div class="settings-card-body">
           <div id="categoriesList"></div>
@@ -1045,6 +1071,10 @@
   <button class="nav-btn active" id="nav-log" onclick="showView('log')">
     <span class="nav-icon">✏️</span>
     <span class="nav-label">LOG</span>
+  </button>
+  <button class="nav-btn" id="nav-income" onclick="showView('income')">
+    <span class="nav-icon">💰</span>
+    <span class="nav-label">INCOME</span>
   </button>
   <button class="nav-btn" id="nav-history" onclick="showView('history')">
     <span class="nav-icon">📋</span>
@@ -1143,7 +1173,8 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 // ── State ──
 let editingId = null;
 
-let incomeSources = JSON.parse(localStorage.getItem('incomeSources') || '[]');
+let incomeEntries = JSON.parse(localStorage.getItem('incomeEntries') || '[]');
+function saveIncome() { localStorage.setItem('incomeEntries', JSON.stringify(incomeEntries)); }
 
 const DEFAULT_PAYMENTS = ['Credit','Debit','Cash'];
 let paymentMethods = JSON.parse(localStorage.getItem('paymentMethods') || 'null') || [...DEFAULT_PAYMENTS];
@@ -1166,6 +1197,7 @@ function init() {
     d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
   document.getElementById('date').value = todayISO();
+  document.getElementById('incomeDate').value = todayISO();
 
   buildCatSelect('category');
   buildCatSelect('editCategory');
@@ -1313,56 +1345,87 @@ function buildEmojiSelect() {
   sel.innerHTML = EMOJI_OPTIONS.map(e => `<option value="${e}">${e}</option>`).join('');
 }
 
-// ── Income Management ──
-function saveIncomeSources() {
-  localStorage.setItem('incomeSources', JSON.stringify(incomeSources));
-}
+// ── Income Logging ──
+function submitIncome() {
+  const source = document.getElementById('incomeSource').value.trim();
+  const amount = parseFloat(document.getElementById('incomeAmount').value);
+  const dateVal = document.getElementById('incomeDate').value || todayISO();
 
-function getMonthlyIncome() {
-  return incomeSources.reduce((s, src) => s + src.amount, 0);
-}
-
-function renderIncomeSourcesList() {
-  const container = document.getElementById('incomeSourcesList');
-  if (!container) return;
-  const total = getMonthlyIncome();
-  container.innerHTML = incomeSources.map((src, i) => `
-    <div class="method-row">
-      <span>${src.name}</span>
-      <div style="display:flex; align-items:center; gap:10px">
-        <span style="font-family:var(--font-mono); font-size:13px; color:var(--success)">$${src.amount.toFixed(2)}</span>
-        <button class="method-delete" onclick="deleteIncomeSource(${i})">Remove</button>
-      </div>
-    </div>`).join('') +
-    (incomeSources.length > 1 ? `<div class="method-row" style="border-bottom:none; color:var(--accent)">
-      <span style="font-weight:700">Total Monthly</span>
-      <span style="font-family:var(--font-mono); font-size:14px; font-weight:700">$${total.toFixed(2)}</span>
-    </div>` : '');
-}
-
-function addIncomeSource() {
-  const nameInput = document.getElementById('newIncomeName');
-  const amtInput = document.getElementById('newIncomeAmt');
-  const name = nameInput.value.trim();
-  const amount = parseFloat(amtInput.value);
-  if (!name) { showToast('Enter a name', true); return; }
+  if (!source) { showToast('Enter a source', true); return; }
   if (!amount || amount <= 0) { showToast('Enter an amount', true); return; }
-  incomeSources.push({ name, amount });
-  saveIncomeSources();
-  renderIncomeSourcesList();
-  nameInput.value = '';
-  amtInput.value = '';
+
+  const d = new Date(dateVal + 'T12:00:00');
+  const entry = {
+    id: Date.now().toString(),
+    dateISO: dateVal,
+    date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    month: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+    monthIndex: d.getMonth(),
+    year: d.getFullYear(),
+    source,
+    amount,
+    notes: document.getElementById('incomeNotes').value.trim(),
+  };
+
+  incomeEntries.unshift(entry);
+  saveIncome();
+  showToast(`✓ +$${amount.toFixed(2)} logged`);
+
+  document.getElementById('incomeSource').value = '';
+  document.getElementById('incomeDate').value = todayISO();
+  document.getElementById('incomeAmount').value = '';
+  document.getElementById('incomeNotes').value = '';
+  renderIncomeHistory();
   renderStats();
-  showToast(`✓ ${name} added`);
 }
 
-function deleteIncomeSource(i) {
-  const name = incomeSources[i].name;
-  incomeSources.splice(i, 1);
-  saveIncomeSources();
-  renderIncomeSourcesList();
-  renderStats();
-  showToast(`"${name}" removed`);
+function renderIncomeHistory() {
+  const container = document.getElementById('incomeLogView');
+  if (!container) return;
+  if (incomeEntries.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="big">💰</div><p>No income logged yet.</p></div>`;
+    return;
+  }
+
+  const byMonth = {};
+  incomeEntries.forEach(e => {
+    if (!byMonth[e.month]) byMonth[e.month] = [];
+    byMonth[e.month].push(e);
+  });
+
+  container.innerHTML = '';
+  Object.entries(byMonth).forEach(([month, items]) => {
+    const total = items.reduce((s, e) => s + e.amount, 0);
+    const div = document.createElement('div');
+    div.className = 'log-month';
+    div.innerHTML = `<div class="log-month-title">${month}</div>` +
+      items.map(e => `
+        <div class="log-entry income-entry">
+          <span class="log-emoji">💰</span>
+          <div class="log-info">
+            <div class="log-desc">${e.source}</div>
+            <div class="log-meta">${e.date}${e.notes ? ' · ' + e.notes : ''}</div>
+          </div>
+          <div class="log-right">
+            <div class="log-amount">+$${e.amount.toFixed(2)}</div>
+          </div>
+        </div>`).join('') +
+      `<div class="log-total">
+        <span class="log-total-label">Month total</span>
+        <span class="log-total-amt" style="color:var(--success)">+$${total.toFixed(2)}</span>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+function getMonthIncome(monthIdx, year) {
+  return incomeEntries.filter(e => {
+    if (e.monthIndex !== undefined && e.year !== undefined) {
+      return e.monthIndex === monthIdx && e.year === year;
+    }
+    const parts = (e.month || '').split(' ');
+    return parts[0] === MONTHS[monthIdx] && parts[1] === String(year);
+  }).reduce((s, e) => s + e.amount, 0);
 }
 
 // ── Submit ──
@@ -1588,12 +1651,12 @@ function renderStats() {
   document.getElementById('statsMonthTotal').textContent = `$${monthTotal.toFixed(2)}`;
 
   // Balance card
-  const monthlyIncome = getMonthlyIncome();
+  const monthlyIncome = getMonthIncome(statsMonth, statsYear);
   const balanceCard = document.getElementById('balanceCard');
-  if (monthlyIncome > 0) {
+  if (monthlyIncome > 0 || monthTotal > 0) {
     balanceCard.style.display = '';
     const net = monthlyIncome - monthTotal;
-    document.getElementById('balanceIncome').textContent = `$${monthlyIncome.toFixed(2)}`;
+    document.getElementById('balanceIncome').textContent = `+$${monthlyIncome.toFixed(2)}`;
     document.getElementById('balanceExpenses').textContent = `-$${monthTotal.toFixed(2)}`;
     document.getElementById('balanceNet').textContent = `${net >= 0 ? '' : '-'}$${Math.abs(net).toFixed(2)}`;
     document.getElementById('balanceNet').className = `balance-amt ${net >= 0 ? 'balance-net-positive' : 'balance-net-negative'}`;
@@ -1697,7 +1760,7 @@ function exportCSV() {
 
 // ── Views ──
 function showView(name) {
-  const views = ['log', 'history', 'stats', 'settings'];
+  const views = ['log', 'income', 'history', 'stats', 'settings'];
   views.forEach(v => {
     document.getElementById(`view-${v}`).style.display = v === name ? 'block' : 'none';
     document.getElementById(`nav-${v}`).classList.toggle('active', v === name);
@@ -1705,9 +1768,10 @@ function showView(name) {
   document.querySelectorAll('.tab').forEach((t, i) => {
     t.classList.toggle('active', views[i] === name);
   });
+  if (name === 'income') renderIncomeHistory();
   if (name === 'history') renderHistory();
   if (name === 'stats') renderStats();
-  if (name === 'settings') { renderIncomeSourcesList(); renderCategoriesList(); renderPaymentMethodsList(); }
+  if (name === 'settings') { renderCategoriesList(); renderPaymentMethodsList(); }
 }
 
 // ── Helpers ──
