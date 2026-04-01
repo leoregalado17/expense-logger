@@ -880,9 +880,8 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="showView('log')">Log</button>
+    <button class="tab active" onclick="showView('log')">Expenses</button>
     <button class="tab" onclick="showView('income')">Income</button>
-    <button class="tab" onclick="showView('history')">History</button>
     <button class="tab" onclick="showView('stats')">Stats</button>
     <button class="tab" onclick="showView('settings')">Settings</button>
   </div>
@@ -936,6 +935,8 @@
 
       </div>
     </div>
+
+    <div class="log-view" id="logView" style="margin-top:20px"></div>
   </div>
 
   <!-- INCOME VIEW -->
@@ -974,11 +975,6 @@
     </div>
 
     <div class="log-view" id="incomeLogView" style="margin-top:20px"></div>
-  </div>
-
-  <!-- HISTORY VIEW -->
-  <div id="view-history" style="display:none">
-    <div class="log-view" id="logView"></div>
   </div>
 
   <!-- STATS VIEW -->
@@ -1069,16 +1065,12 @@
 <!-- Bottom Nav -->
 <div class="bottom-nav">
   <button class="nav-btn active" id="nav-log" onclick="showView('log')">
-    <span class="nav-icon">✏️</span>
-    <span class="nav-label">LOG</span>
+    <span class="nav-icon">💸</span>
+    <span class="nav-label">EXPENSES</span>
   </button>
   <button class="nav-btn" id="nav-income" onclick="showView('income')">
     <span class="nav-icon">💰</span>
     <span class="nav-label">INCOME</span>
-  </button>
-  <button class="nav-btn" id="nav-history" onclick="showView('history')">
-    <span class="nav-icon">📋</span>
-    <span class="nav-label">HISTORY</span>
   </button>
   <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
     <span class="nav-icon">📊</span>
@@ -1760,7 +1752,7 @@ function exportCSV() {
 
 // ── Views ──
 function showView(name) {
-  const views = ['log', 'income', 'history', 'stats', 'settings'];
+  const views = ['log', 'income', 'stats', 'settings'];
   views.forEach(v => {
     document.getElementById(`view-${v}`).style.display = v === name ? 'block' : 'none';
     document.getElementById(`nav-${v}`).classList.toggle('active', v === name);
@@ -1768,8 +1760,8 @@ function showView(name) {
   document.querySelectorAll('.tab').forEach((t, i) => {
     t.classList.toggle('active', views[i] === name);
   });
+  if (name === 'log') renderHistory();
   if (name === 'income') renderIncomeHistory();
-  if (name === 'history') renderHistory();
   if (name === 'stats') renderStats();
   if (name === 'settings') { renderCategoriesList(); renderPaymentMethodsList(); }
 }
